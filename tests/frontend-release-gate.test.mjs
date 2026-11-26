@@ -3,7 +3,7 @@ import assert from 'assert';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { beoordeel, vingerafdruk, conflictKopieen } from '../scripts/frontend-release-gate.mjs';
+import { beoordeel, vingerafdruk, conflictKopieen, controleerInhoud } from '../scripts/frontend-release-gate.mjs';
 const NU = 1_800_000_000_000;
 const H = 'a'.repeat(64);
 let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; console.log('PASS ' + m); };
@@ -32,4 +32,21 @@ fs.mkdirSync(path.join(d, 'x')); fs.writeFileSync(path.join(d, 'x', 'n.js'), '')
 ok(h1 !== h2 && h2 !== h3 && /^[0-9a-f]{64}$/.test(h1), 'vingerafdruk wijzigt bij inhoud en nieuw bestand');
 ok(vingerafdruk(path.join(d, 'bestaat-niet')) === null, 'geen map: geen vingerafdruk');
 fs.rmSync(d, { recursive: true, force: true });
+
+// Inhoudsbinding met herhaalde pogingen (herstel 26-11-2026): tijdelijke ophaalfout is geen afwijking; blijvende wel, met reden.
+{
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'kvm-gate-inh-'));
+  fs.writeFileSync(path.join(d, 'a.html'), 'A'); fs.writeFileSync(path.join(d, 'b.html'), 'B'); fs.writeFileSync(path.join(d, '_headers'), 'x');
+  const resp = (body, status = 200) => ({ ok: status >= 200 && status < 300, status, arrayBuffer: async () => new TextEncoder().encode(body).buffer });
+  const geen = async () => {};
+  let teller = 0;
+  let r = await controleerInhoud('https://x.invalid', d, { wacht: geen, fetchFn: async (u) => { if (u.endsWith('/a.html') && teller++ < 2) throw new Error('time-out'); return resp(u.endsWith('/a.html') ? 'A' : 'B'); } });
+  ok(r.afwijkend.length === 0 && r.herhaald === 2 && r.totaal === 2, 'tijdelijke ophaalfout (2x) daarna juiste inhoud: geen afwijking');
+  r = await controleerInhoud('https://x.invalid', d, { wacht: geen, fetchFn: async (u) => resp(u.endsWith('/a.html') ? 'ANDERS' : 'B') });
+  ok(r.afwijkend.join() === 'a.html' && r.redenen['a.html'] === 'inhoud', 'blijvend andere inhoud: afwijking met reden inhoud (fail-closed)');
+  r = await controleerInhoud('https://x.invalid', d, { wacht: geen, fetchFn: async (u) => (u.endsWith('/b.html') ? resp('', 503) : resp('A')) });
+  ok(r.afwijkend.join() === 'b.html' && r.redenen['b.html'] === 'ophalen (HTTP 503)', 'blijvend niet op te halen: afwijking met reden ophalen (fail-closed)');
+  r = await controleerInhoud('https://x.invalid', d, { wacht: geen, fetchFn: async () => { throw new Error('net'); } });
+  ok(r.afwijkend.length === 2 && r.redenen['a.html'] === 'ophalen (netwerkfout)', 'netwerk volledig weg: alles afwijkend, nooit binding');
+}
 console.log('✅ ' + n + '/' + n);

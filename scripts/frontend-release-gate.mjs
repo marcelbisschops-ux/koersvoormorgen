@@ -80,19 +80,30 @@ export function conflictKopieen(dir = DIST) {
 // Inhoudsbinding (Codex-review 12-11, P1): de opgegeven preview moet exact deze build serveren. Elk publiek bestand
 // van .pages-dist wordt van de preview gehaald en op SHA-256 vergeleken. Niet-geserveerde bestanden (_headers,
 // _redirects, functions/) worden overgeslagen. Eén afwijking = geen binding = geen PASS.
-export async function controleerInhoud(url, dir = DIST) {
+// Herstel 26-11-2026 (vier afwijkende bestanden op preview 06c21081 bleken achteraf wél exact deze build te serveren): een
+// ophaalfout direct na de upload (time-out, 5xx) werd stil als afwijking geteld. Nu per bestand maximaal 4 pogingen met
+// oplopende wachttijd, en per afwijking de reden: 'ophalen' (geen geldig antwoord) of 'inhoud' (andere SHA-256). Fail-closed:
+// blijft het na de laatste poging anders, dan is er geen binding.
+export async function controleerInhoud(url, dir = DIST, { fetchFn = fetch, wacht = (ms) => new Promise((z) => setTimeout(z, ms)), pogingen = [0, 2000, 5000, 10000] } = {}) {
   const basis = url.replace(/\/$/, '');
   const bestanden = [];
   const loop = (d) => { for (const n of fs.readdirSync(d).sort()) { const p = path.join(d, n); const rel = path.relative(dir, p).split(path.sep).join('/'); if (fs.lstatSync(p).isDirectory()) { if (rel !== 'functions') loop(p); } else if (!rel.startsWith('_')) bestanden.push(rel); } };
   loop(dir);
-  const afwijkend = [];
+  const afwijkend = [], redenen = {};
+  let herhaald = 0;
   for (const rel of bestanden) {
     const lokaal = crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, rel))).digest('hex');
-    let remote = null;
-    try { const r = await fetch(basis + '/' + rel.split('/').map(encodeURIComponent).join('/'), { redirect: 'follow' }); if (r.ok) remote = crypto.createHash('sha256').update(Buffer.from(await r.arrayBuffer())).digest('hex'); } catch {}
-    if (remote !== lokaal) afwijkend.push(rel);
+    let reden = null;
+    for (let i = 0; i < pogingen.length; i++) {
+      if (pogingen[i]) { herhaald++; await wacht(pogingen[i]); }
+      let remote = null, status = 0;
+      try { const r = await fetchFn(basis + '/' + rel.split('/').map(encodeURIComponent).join('/'), { redirect: 'follow' }); status = r.status; if (r.ok) remote = crypto.createHash('sha256').update(Buffer.from(await r.arrayBuffer())).digest('hex'); } catch { status = 0; }
+      if (remote === lokaal) { reden = null; break; }
+      reden = remote === null ? 'ophalen' + (status ? ' (HTTP ' + status + ')' : ' (netwerkfout)') : 'inhoud';
+    }
+    if (reden) { afwijkend.push(rel); redenen[rel] = reden; }
   }
-  return { totaal: bestanden.length, afwijkend };
+  return { totaal: bestanden.length, afwijkend, redenen, herhaald };
 }
 
 async function wachtOpPreview(url) {
@@ -124,8 +135,8 @@ async function main() {
     if (bereikbaar) {
       const inh = await controleerInhoud(arg);
       if (inh.afwijkend.length) {
-        schrijf({ ts: Date.now(), hash, url: arg, result: 'GEEN_BINDING', detail: inh.afwijkend.length + '/' + inh.totaal + ' bestanden wijken af: ' + inh.afwijkend.slice(0, 5).join(', ') });
-        console.error('🔴 Preview serveert niet exact deze build (' + inh.afwijkend.length + '/' + inh.totaal + ' afwijkend, o.a. ' + inh.afwijkend.slice(0, 3).join(', ') + '). Geen previewbewijs vastgelegd.');
+        schrijf({ ts: Date.now(), hash, url: arg, result: 'GEEN_BINDING', detail: inh.afwijkend.length + '/' + inh.totaal + ' bestanden wijken af: ' + inh.afwijkend.slice(0, 5).map((r) => r + ' [' + inh.redenen[r] + ']').join(', ') });
+        console.error('🔴 Preview serveert niet exact deze build (' + inh.afwijkend.length + '/' + inh.totaal + ' afwijkend na herhaalde pogingen, o.a. ' + inh.afwijkend.slice(0, 3).map((r) => r + ' [' + inh.redenen[r] + ']').join(', ') + '). Geen previewbewijs vastgelegd.');
         return 1;
       }
       console.log('🟢 Preview serveert exact deze build (' + inh.totaal + ' bestanden, SHA-256 gelijk).');
