@@ -88,7 +88,8 @@ test('waarderingsset: maken, goedkeuren, rekenuitkomst, overname dealvoorstel en
     w.remove();
     return out;
   });
-  expect(o).toEqual({ knop: true, voor: '0', ebitda: String(Math.round(g)), basis: '5', boven: '7', tk: '2', bron: 'waarderingsset-v1' });
+  // KVM-014 (werkregel 59): het veld neemt vóór de klik al automatisch de centrale genormaliseerde EBITDA over (geen DD-waarde meer).
+  expect(o).toEqual({ knop: true, voor: String(Math.round(g)), ebitda: String(Math.round(g)), basis: '5', boven: '7', tk: '2', bron: 'waarderingsset-v1' });
   // Rolgrens: koper en verkoper krijgen de set niet via de API.
   for (const [code, kop] of [[V, {}]]) {
     const x = (await api('GET', '/mna/financieel?code=' + code, { headers: kop })).json || {};
