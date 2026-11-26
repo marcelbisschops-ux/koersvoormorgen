@@ -22,7 +22,7 @@ html[data-ui="2"]{
 }
 @media (prefers-color-scheme: dark){
   :root{ --teal:#A9A6E6; --teal-dim:#C4C2F0; --teal-dark:#C4C2F0; --teal-bg:rgba(169,166,230,.16); --teal-light:#24234A; --teal-border:#44427A; }
-  html[data-ui="2"]{ --k2-nav:#1E1C4A; --k2-nav-actief:#2B2964; --k2-accent:#A9A6E6; --k2-accent-sterk:#C4C2F0; --k2-accent-vlak:rgba(169,166,230,.16); --k2-voortgang:#E0675B; }
+  html[data-ui="2"]{ --k2-nav:#3A3880; --k2-nav-actief:#4A47A0; --k2-accent:#A9A6E6; --k2-accent-sterk:#C4C2F0; --k2-accent-vlak:rgba(169,166,230,.16); --k2-voortgang:#E0675B; }
 }
 body{font-family:var(--kh-font-tekst)}
 h1,h2,h3,.login-title,.ttl,.doc-title{font-family:var(--kh-font-kop)!important}
@@ -37,6 +37,9 @@ h1,h2,h3,.login-title,.ttl,.doc-title{font-family:var(--kh-font-kop)!important}
 .hdr-brand,.login-brand{font-size:0!important;letter-spacing:0!important;gap:12px}
 .hdr-brand::after,.login-brand::after{content:'Powered by Koers voor Morgen';font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:none;color:var(--muted);opacity:.85;font-family:var(--kh-font-tekst)}
 .login-brand-name{display:none}
+.hdr-brand{flex-shrink:0}
+.hdr-brand::after{white-space:nowrap}
+@media (max-width:1200px){ .hdr-brand::after{display:none} }
 
 /* Inlogpagina in MaeS-stijl */
 .login-outer{background:linear-gradient(115deg,#242251 0%,#2B2964 55%,#39367a 100%)!important}
@@ -47,7 +50,7 @@ h1,h2,h3,.login-title,.ttl,.doc-title{font-family:var(--kh-font-kop)!important}
 
 /* Knoppen: navy, rood accent bij hover/focus */
 .btn:hover:not(:disabled),.btn-gen:hover:not(:disabled){box-shadow:inset 0 -3px 0 var(--kh-rood)}
+@media (max-width:1024px){ .hdr-dot,.wdot{width:92px!important;height:20px!important} }
 @media (max-width:600px){
-  .hdr-dot,.wdot{width:92px!important;height:20px!important}
   .login-brand .login-dot{width:180px!important;height:30px!important}
 }
