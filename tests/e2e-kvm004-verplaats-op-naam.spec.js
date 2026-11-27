@@ -2,7 +2,7 @@
 // kantoor te verplaatsen, i.p.v. een technisch gebruiker-ID te typen. Stagingproef met twee synthetische gebruikers
 // (elk een eigen kantoor van 1), testadressen .test (geen mail-side-effect zonder RESEND op staging-testmodus), ruimt op.
 import { test, expect } from '@playwright/test';
-import { api, leesAdminKey, WORKER, d1, IS_STAGING_WORKER, verwijderTestGebruiker } from './lib.mjs';
+import { api, leesAdminKey, WORKER, d1, IS_STAGING_WORKER, verwijderTestGebruiker, marilynTab } from './lib.mjs';
 
 test.skip(!IS_STAGING_WORKER, 'alleen staging');
 const ADMIN = leesAdminKey();
@@ -22,7 +22,7 @@ test('KVM-004: gebruiker kiezen op naam en verplaatsen naar een kantoor', async 
   await page.locator('#nood summary').click();
   await page.locator('#ak').fill(ADMIN);
   await page.locator('#login-btn').click();
-  await page.locator('#t-kantoren').click();
+  await marilynTab(page, 't-kantoren');
   await page.locator('.btn-kantoor-open[data-id="K' + A + '"]').click();
   const sel = page.locator('#kantoor-verplaats-gid-K' + A);
   await expect(sel.locator('option', { hasText: 'Synth KVM004 B ' + T })).toHaveCount(1, { timeout: 20000 });

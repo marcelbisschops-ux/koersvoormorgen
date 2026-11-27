@@ -4,7 +4,7 @@
 // Volledig synthetisch account; wordt na afloop uit staging-D1 verwijderd. Geheimen worden nooit gelogd.
 import { test, expect } from '@playwright/test';
 import crypto from 'crypto';
-import { leesAdminKey, WORKER, d1, IS_STAGING_WORKER } from './lib.mjs';
+import { leesAdminKey, WORKER, d1, IS_STAGING_WORKER, marilynTab } from './lib.mjs';
 
 test.skip(!IS_STAGING_WORKER, 'alleen staging');
 const ADMIN = leesAdminKey();
@@ -30,7 +30,7 @@ test('activeren, inloggen met authenticator, uitloggen', async ({ page }) => {
   await page.locator('#ak').fill(ADMIN);
   await page.locator('#login-btn').click();
   await expect(page.locator('#hdr-wie')).toHaveText(/Noodtoegang/);
-  await page.locator('#t-veiligheid').click();
+  await marilynTab(page, 't-veiligheid');
   await expect(page.locator('#bt-maak')).toBeVisible({ timeout: 20000 });
   await page.locator('#bt-naam').fill('N193 synthetisch');
   await page.locator('#bt-email').fill(EMAIL);
@@ -92,13 +92,13 @@ test('activeren, inloggen met authenticator, uitloggen', async ({ page }) => {
   await page.locator('#pl-code').press('Enter');
   await page.locator('#pl-btn2').click({ force: true }).catch(() => {});
   await expect(page.locator('#hdr-wie')).toHaveText('Ingelogd als N193 synthetisch', { timeout: 20000 });
-  await expect(page.locator('#t-veiligheid')).toBeVisible();
+  await expect(page.locator('#t-veiligheid')).toBeAttached();
   await expect.poll(() => page.evaluate(() => adminKey.indexOf('bs_') === 0), { timeout: 20000 }).toBe(true);
   const sessie = await page.evaluate(() => adminKey);
   expect(sessie.startsWith('bs_')).toBe(true);
 
   // 4. Met een persoonlijke sessie geen accountbeheer.
-  await page.locator('#t-veiligheid').click();
+  await marilynTab(page, 't-veiligheid');
   await expect(page.locator('text=kan alleen met noodtoegang')).toBeVisible({ timeout: 20000 });
   await expect(page.locator('#bt-maak')).toHaveCount(0);
   const r1 = await page.request.get(WORKER + '/mna/admin/veiligheid/r2-reconciliatie', { headers: { 'x-admin-key': sessie } });
@@ -146,7 +146,7 @@ test('herstellen met waarschuwing, pagina verlaten, later de koppeling los beves
     await page.locator('#ak').fill(ADMIN);
     await page.locator('#login-btn').click();
     await expect(page.locator('#hdr-wie')).toHaveText(/Noodtoegang/);
-    await page.locator('#t-veiligheid').click();
+    await marilynTab(page, 't-veiligheid');
     await expect(page.locator('#bt-maak')).toBeVisible({ timeout: 20000 });
   };
   await noodtoegang();

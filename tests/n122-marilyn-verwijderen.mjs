@@ -299,6 +299,10 @@ function maakWorker() {
       srv.data[lijst].splice(i, 1);
       return Promise.resolve(antwoord(200, { ok: true }));
     }
+    // KVM-024: het managementdashboard leest bij het inloggen deze bestaande routes (alleen-lezen). Synthetisch antwoord.
+    const DASH = { '/mna/admin/postvak': { ok: true, ongelezen: 0, berichten: [] }, '/mna/admin/agenda': { ok: true, komend: [], voorstellen: [], blokkades: [], historie: [] },
+      '/mna/admin/facturatie/facturen': { ok: true, facturen: [] }, '/mna/admin/veiligheid/bevindingen': { ok: true, bevindingen: [] } };
+    if (methode === 'GET' && DASH[u.pathname]) { srv.dashGets = (srv.dashGets || 0) + 1; return Promise.resolve(antwoord(200, DASH[u.pathname])); }
     srv.onbekend.push(call);
     return Promise.resolve(antwoord(404, { error: 'Not found' }));
   };

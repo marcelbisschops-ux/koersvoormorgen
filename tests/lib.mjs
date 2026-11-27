@@ -380,3 +380,15 @@ export async function verwijderTestGebruiker(gid, adminKey) {
   const a = await api('POST', '/gebruikers/verwijder/' + gid, { adminKey, body: {} });
   return { ok: !!(a.json && a.json.ok), status: a.status, json: a.json };
 }
+
+// KVM-024: Marilyn-navigatie met inklapbare hoofdmenu's. Een onderdeel in een dichte groep is niet zichtbaar; open dan
+// eerst de groep via de echte groepkop (zoals de gebruiker doet) en klik daarna het onderdeel.
+export async function marilynTab(page, id) {
+  const knop = page.locator('#' + id);
+  await knop.waitFor({ state: 'attached', timeout: 20000 });
+  if (!(await knop.isVisible())) {
+    const groep = await page.evaluate((i) => { const b = document.getElementById(i); const l = b && b.closest('.mar-lijst'); return l ? l.id.replace(/^gl-/, 'g-') : null; }, id);
+    if (groep) await page.locator('#' + groep).click();
+  }
+  await knop.click();
+}

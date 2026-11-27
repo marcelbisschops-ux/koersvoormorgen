@@ -17,7 +17,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
-import { api, leesAdminKey, WORKER, d1, zetMfaUitVoorTest, accepteerPlatformvoorwaarden, ruimTestTrajectOp, verwijderTestGebruiker, IS_STAGING_WORKER } from './lib.mjs';
+import { api, leesAdminKey, WORKER, d1, zetMfaUitVoorTest, accepteerPlatformvoorwaarden, ruimTestTrajectOp, verwijderTestGebruiker, IS_STAGING_WORKER, marilynTab } from './lib.mjs';
 
 const ADMIN = leesAdminKey();
 const WW = 'TestWachtwoord123!';
@@ -55,7 +55,7 @@ async function loginMarilyn(page) {
   await page.locator('#nood summary').click(); // N-193: noodtoegang staat ingeklapt onder de persoonlijke login
   await page.locator('#ak').fill(ADMIN);
   await page.locator('#login-btn').click();
-  await page.waitForSelector('#t-mna', { timeout: 15000 });
+  await page.waitForSelector('#t-mna', { state: 'attached', timeout: 15000 });
 }
 
 async function maakTraject(extra) {
@@ -211,7 +211,7 @@ test('3. Marilyn: M&A-traject volledige CRUD-keten (nieuw → bewerk → vergren
   let trajectCode = null;
   try {
     await loginMarilyn(page);
-    await page.locator('#t-mna').click();
+    await marilynTab(page, 't-mna');
     await page.waitForTimeout(500);
 
     await page.getByRole('button', { name: /Nieuw traject/ }).click();
@@ -363,7 +363,7 @@ test('4. Marilyn: wisTrajectData wist exact de gekozen data, niets meer en niets
 
     // ── Marilyn: externe rij afgeschermd, geen wisknop ──────────────
     await loginMarilyn(page);
-    await page.locator('#t-mna').click();
+    await marilynTab(page, 't-mna');
     await page.waitForTimeout(500);
     // De afgeschermde lijstrij draagt bewust geen id/naam (N-102, filterExternTraject) — de rij is
     // alleen terug te vinden via de zichtbare created_at uit de onafhankelijke D1-read.

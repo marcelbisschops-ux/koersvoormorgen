@@ -2540,6 +2540,15 @@ log('N-215: één honorariummodel; het OHW-overleg legt alleen de verwachting va
   } catch (e) { warn('N-215: tests/n215-verwachting-ui.mjs faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
 }
 
+log('KVM-024 Marilyn-navigatie: Dashboard + vier hoofdmenu\'s, elk oud onderdeel bereikbaar (tests/kvm024-marilyn-navigatie.mjs)');
+{
+  try {
+    const { execFileSync } = await import('child_process');
+    execFileSync(process.execPath, [path.join(ROOT, 'tests/kvm024-marilyn-navigatie.mjs')], { stdio: 'pipe', cwd: ROOT });
+    ok('KVM-024: mapping en navigatiegedrag groen (tests/kvm024-marilyn-navigatie.mjs).');
+  } catch (e) { warn('KVM-024: tests/kvm024-marilyn-navigatie.mjs faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
+}
+
 log('Releaseherkomst: geen uitrol vanuit een werkboom met wijzigingen of niet-vastgelegde bestanden (Codex-review 18-11, P2)');
 {
   try {

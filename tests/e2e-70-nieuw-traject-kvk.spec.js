@@ -3,7 +3,7 @@
 // traject met KvK en adres → verkoper logt in → openingsscherm met de vooraf ingevulde KvK/adres → afronden → due
 // diligence. Fictief, testadressen op .invalid, ruimt op.
 import { test, expect } from '@playwright/test';
-import { leesAdminKey, WORKER, d1, accepteerPlatformvoorwaarden, ruimTrajectOp, IS_STAGING_WORKER } from './lib.mjs';
+import { leesAdminKey, WORKER, d1, accepteerPlatformvoorwaarden, ruimTrajectOp, IS_STAGING_WORKER, marilynTab } from './lib.mjs';
 
 test.skip(!IS_STAGING_WORKER, 'alleen staging');
 const ADMIN = leesAdminKey();
@@ -18,7 +18,7 @@ test('nieuw traject: vooraf ingevulde KvK en adres worden geaccepteerd in het op
   await page.locator('#nood summary').click();
   await page.locator('#ak').fill(ADMIN);
   await page.locator('#login-btn').click();
-  await page.locator('#t-mna').click();
+  await marilynTab(page, 't-mna');
   await page.locator('#btn-nieuw').click();
   await page.locator('#m-k').fill(NAAM);
   await page.locator('#m-kvk').fill('12345678');

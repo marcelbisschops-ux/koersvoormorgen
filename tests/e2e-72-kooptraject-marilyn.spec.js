@@ -3,7 +3,7 @@
 // deze deal (buy-side), en zichtbaar in het overzicht als kooptraject. STAGING, fictief, ruimt op.
 import fs from 'fs';
 import { test, expect } from '@playwright/test';
-import { api, leesAdminKey, WORKER, d1, accepteerPlatformvoorwaarden, ruimTrajectOp, IS_STAGING_WORKER } from './lib.mjs';
+import { api, leesAdminKey, WORKER, d1, accepteerPlatformvoorwaarden, ruimTrajectOp, IS_STAGING_WORKER, marilynTab } from './lib.mjs';
 
 test.skip(!IS_STAGING_WORKER, 'alleen staging');
 const ADMIN = leesAdminKey();
@@ -18,7 +18,7 @@ test('kooptraject aanmaken vanuit Marilyn en direct als begeleider openen', asyn
   await page.locator('#nood summary').click();
   await page.locator('#ak').fill(ADMIN);
   await page.locator('#login-btn').click();
-  await page.locator('#t-mna').click();
+  await marilynTab(page, 't-mna');
   await page.locator('#btn-nieuw').click();
   await page.locator('#m-opdr').selectOption('koper');
   await expect(page.locator('#m-t')).toHaveValue('Overname');

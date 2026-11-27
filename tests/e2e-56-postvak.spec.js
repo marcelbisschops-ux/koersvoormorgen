@@ -2,7 +2,7 @@
 // met de echte knoppen (prompt/confirm) en verificatie in staging-D1. Staging leidt alle e-mail om naar het
 // Resend-testadres (KVM_MAIL_TESTMODUS). STAGING, fictieve berichten.
 import { test, expect } from '@playwright/test';
-import { leesAdminKey, WORKER, d1, IS_STAGING_WORKER } from './lib.mjs';
+import { leesAdminKey, WORKER, d1, IS_STAGING_WORKER, marilynTab } from './lib.mjs';
 
 test.skip(!IS_STAGING_WORKER, 'alleen staging');
 const ADMIN = leesAdminKey();
@@ -18,8 +18,8 @@ test('postvak: doorsturen, beantwoorden, verwijderen, legen', async ({ page }) =
   await page.locator('#nood summary').click();
   await page.locator('#ak').fill(ADMIN);
   await page.locator('#login-btn').click();
-  await expect(page.locator('#t-postvak')).toBeVisible({ timeout: 20000 });
-  await page.locator('#t-postvak').click();
+  await expect(page.locator('#t-postvak')).toBeAttached({ timeout: 20000 });
+  await marilynTab(page, 't-postvak');
   const rijA = page.locator('tr.pv-row', { hasText: MERK + ' A' });
   await expect(rijA).toBeVisible({ timeout: 20000 });
 

@@ -3,7 +3,7 @@
 // definitief → PDF → creditnota. Synthetisch testkantoor in testmodus, ruimt alles op. Geen AI, geen e-mail.
 import { test, expect } from '@playwright/test';
 import fs from 'fs';
-import { api, leesAdminKey, WORKER, d1, IS_STAGING_WORKER, verwijderTestGebruiker } from './lib.mjs';
+import { api, leesAdminKey, WORKER, d1, IS_STAGING_WORKER, verwijderTestGebruiker, marilynTab } from './lib.mjs';
 
 test.skip(!IS_STAGING_WORKER, 'alleen staging');
 const ADMIN = leesAdminKey();
@@ -46,7 +46,7 @@ test('#85 vast maandbedrag: instellen, inbegrepen, blokkade, definitief, PDF, cr
   await page.locator('#nood summary').click();
   await page.locator('#ak').fill(ADMIN);
   await page.locator('#login-btn').click();
-  await page.locator('#t-facturatie').click();
+  await marilynTab(page, 't-facturatie');
   const naarSub = async (s) => { await page.locator('.fact-sub[data-sub="' + s + '"]').click(); await expect(page.locator('#fact-inhoud')).not.toContainText('Laden...'); };
   const vast = page.locator('.fact-vast[data-id="' + kid + '"]');
 

@@ -86,6 +86,37 @@ tr:hover td{background:rgba(61,107,99,.04)}
 .toast.hide{animation:toastOut .2s ease forwards}
 @keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes toastOut{to{opacity:0;transform:translateX(20px)}}
+/* KVM-024: navigatie (Dashboard + vier inklapbare hoofdmenu's) en managementdashboard. */
+.mar-layout{display:grid;grid-template-columns:232px minmax(0,1fr);gap:2rem;align-items:start}
+.mar-nav{position:sticky;top:1rem;display:flex;flex-direction:column;gap:2px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:.5rem}
+.mar-kop,.mar-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:transparent;border:none;border-radius:var(--r);cursor:pointer;font-family:inherit;color:var(--mid)}
+.mar-kop{font-size:13px;font-weight:600;padding:8px 10px}
+.mar-kop:hover,.mar-item:hover{background:var(--teal-bg)}
+.mar-kop.active,.mar-kop.bevat-actief{color:var(--teal)}
+.mar-item{font-size:13px;padding:6px 10px 6px 34px;justify-content:space-between;color:var(--muted)}
+.mar-item.mar-sub{padding-left:44px}
+.mar-item.active{background:var(--teal-bg);color:var(--teal);font-weight:600}
+.mar-subkop{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 10px 2px 34px}
+.mar-ic{width:18px;text-align:center;flex:0 0 18px}
+.mar-pijl{margin-left:auto;font-size:11px;color:var(--muted)}
+.mar-teller{font-size:11px;font-weight:600;min-width:20px;padding:1px 6px;border-radius:10px;background:var(--card);color:var(--mid);text-align:center}
+.mar-teller.mar-actie{background:var(--gold-bg);color:var(--gold-dark)}
+.mar-kop .mar-teller{margin-left:auto}
+.mar-kop .mar-teller+.mar-pijl{margin-left:6px}
+.mar-main{min-width:0}
+.dash-kop{margin-bottom:1.25rem}
+.dash-titel{font-size:20px;font-weight:600;color:var(--head);margin:0}
+.dash-sub{font-size:13px;color:var(--muted)}
+.dash-tegels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.dash-tegel{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:.75rem}
+.dash-tegel-kop{display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;cursor:pointer;font-family:inherit;font-size:15px;font-weight:600;color:var(--head);padding:.25rem .25rem .6rem;border-bottom:1px solid var(--border);margin-bottom:.4rem;text-align:left}
+.dash-tegel-kop:hover{color:var(--teal)}
+.dash-regel{display:flex;justify-content:space-between;align-items:center;width:100%;background:transparent;border:none;border-radius:var(--r);cursor:pointer;font-family:inherit;font-size:13px;color:var(--mid);padding:6px .25rem;text-align:left}
+.dash-regel:hover{background:var(--teal-bg)}
+.dash-regel strong{font-size:15px;color:var(--head)}
+.dash-regel strong.dash-actie{color:var(--gold-dark)}
+.dash-leeg{font-size:12px;color:var(--muted);padding:6px .25rem}
+@media(max-width:900px){.mar-layout{grid-template-columns:1fr;gap:1rem}.mar-nav{position:static}.dash-tegels{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -116,7 +147,7 @@ const BRAND={platform:'Koers voor Morgen',bedrijf:'Bisschops Financing B.V.',suf
 const TAAL_REGELS='Schrijf in natuurlijk, vloeiend Nederlands — geen letterlijke vertaling uit het Engels. Gebruik uitsluitend de formele aanspreekvorm "u/uw", nooit "je/jij/jouw", ook niet losse keren door elkaar. Gebruik "geen [zelfstandig naamwoord]" i.p.v. de onnatuurlijke constructie "niet een [zelfstandig naamwoord]". Vermijd andere letterlijke Engelse constructies en verzin geen niet-bestaande woorden.';
 document.title=BRAND.platform+' — '+BRAND.suffix;
 (function(){var b=document.querySelector('.brand');if(b)b.innerHTML='<div class="wdot"></div>'+BRAND.platform+' <span style="color:var(--teal);margin-left:4px">'+BRAND.suffix+'</span>';})();
-let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],leads=[],proefAanvragen=[],activeTab='scans',scanFilter='',openRow=null,kantorenOpenId=null;
+let adminKey='',scans=[],callbacks=[],mnaList=[],rapporten=[],leads=[],proefAanvragen=[],activeTab='dashboard',scanFilter='',openRow=null,kantorenOpenId=null;
 // P1-BUY-1 (25 sep 2026): koopmandaten (buy-side) — los van mnaList, lazy geladen zodra de MNA-tab
 // voor het eerst getoond wordt, zodat de bestaande doLogin/refreshData-kritische-pad niet geraakt wordt.
 let kmList=[],kmLoaded=false;
@@ -346,7 +377,7 @@ async function startMetSleutel(key){
     document.getElementById('hdr-actions').style.display='flex';
     document.getElementById('btn-refresh').onclick=refreshData;
     document.getElementById('btn-logout').onclick=logout;
-    renderDashboard();
+    dashExtra=null;renderDashboard();
     return true;
   }catch(e){
     return false;
@@ -358,7 +389,7 @@ function logout(){
   if(isBeheersessie()){var s=adminKey;fetch(WORKER+'/beheer/uitloggen',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({sessie:s})}).catch(function(){});}
   beheerNaam='';var hw=document.getElementById('hdr-wie');if(hw)hw.textContent='';
   if(typeof veiligheidRefreshTimer!=='undefined'&&veiligheidRefreshTimer){clearInterval(veiligheidRefreshTimer);veiligheidRefreshTimer=null;}
-  adminKey='';scans=[];callbacks=[];mnaList=[];rapporten=[];leads=[];
+  adminKey='';scans=[];callbacks=[];mnaList=[];rapporten=[];leads=[];dashExtra=null;
   gebruikerToken='';gebruikerInfo=null;isSuperAdmin=false;
   document.getElementById('hdr-actions').style.display='none';
   renderLogin();
@@ -381,77 +412,168 @@ async function refreshData(){
     try{var r4data=r4.ok?await r4.json().catch(()=>[]):[];rapporten=Array.isArray(r4data)?r4data:[];}catch(e){rapporten=[];}
     try{var r5data=r5.ok?await r5.json().catch(()=>[]):[];leads=Array.isArray(r5data)?r5data:[];}catch(e){leads=[];}
     try{var r6data=r6.ok?await r6.json().catch(()=>[]):[];proefAanvragen=Array.isArray(r6data)?r6data:[];}catch(e){proefAanvragen=[];}
-    renderDashboard();
+    dashExtra=null;renderDashboard();
   }catch(e){toast('Kon niet verversen.','err');}
 }
 
 // DASHBOARD
+// KVM-024 (besluit Marcel 26-11-2026): navigatie als Dashboard plus vier inklapbare hoofdmenu's (Commercie, Operatie,
+// Financiën, Beheer). Elk bestaand tabblad houdt zijn eigen knop met hetzelfde id (t-...), dezelfde activeTab-waarde en
+// dezelfde zichtbaarheidsregel (sa = alleen superadmin); er is niets toegevoegd of weggehaald. Standaard staat alleen de
+// groep van het actieve onderdeel open; een groepkop opent die groep en sluit de andere. Tellers blijven bij het
+// onderdeel en worden bij een dichte groep als som op de groepkop getoond.
+var MENU_GROEPEN=[
+  {id:'commercie',label:'Commercie',icoon:'&#128200;',items:[
+    {tab:'leads',btn:'t-leads',label:'Leads',sa:true,teller:function(){return leads.filter(function(l){return l.status==='nieuw';}).length;},actie:true},
+    {tab:'callbacks',btn:'t-cb',label:'Terugbelverzoeken',sa:true,teller:function(){return callbacks.length;},actie:true},
+    {tab:'proef',btn:'t-proef',label:'Proefaanvragen',sa:true,teller:function(){return proefAanvragen.filter(function(p){return p.status==='open';}).length;},actie:true},
+    {kop:'Scans & rapporten',items:[
+      {tab:'scans',btn:'t-scans',label:'Scans',sa:true,teller:function(){return scans.length;},reset:function(){scanFilter='';openRow=null;}},
+      {tab:'rapporten',btn:'t-rapp',label:'Scanrapporten',teller:function(){return rapporten.length;}}]}]},
+  {id:'operatie',label:'Operatie',icoon:'&#128188;',items:[
+    {tab:'mna',btn:'t-mna',label:'M&A-trajecten',teller:function(){return mnaList.length;}},
+    {tab:'matching',btn:'t-matching',label:'Matching',sa:true},
+    {tab:'sourcing',btn:'t-sourcing',label:'Sourcing',sa:true},
+    {tab:'pool',btn:'t-pool',label:'Specialistenpool',sa:true},
+    {tab:'docs',btn:'t-docs',label:'Documenten'},
+    {tab:'agenda',btn:'t-agenda',label:'Agenda',sa:true},
+    {tab:'postvak',btn:'t-postvak',label:'Postvak',sa:true,teller:function(){return postvakOngelezen;},actie:true,alleenBijWaarde:true}]},
+  {id:'financien',label:'Financiën',icoon:'&#128182;',items:[
+    {tab:'tarieven',btn:'t-tarieven',label:'Tarieven',sa:true},
+    {tab:'facturatie',btn:'t-facturatie',label:'Facturatie',sa:true,reset:function(){factOpenId=null;}}]},
+  {id:'beheer',label:'Beheer',icoon:'&#9881;&#65039;',items:[
+    {kop:'Kantoren & gebruikers',items:[
+      {tab:'kantoren',btn:'t-kantoren',label:'Kantoren',sa:true,reset:function(){kantorenOpenId=null;}},
+      {tab:'gebruikers',btn:'t-geb',label:'Gebruikers',sa:true}]},
+    {kop:'Waarderingsmodellen',items:[
+      {tab:'waarderingsmodel',btn:'t-waarderingsmodel',label:'Waarderingsmodel (beheer)'},
+      {tab:'waardering',btn:'t-waardering',label:'Waardering (rekenhulp)'}]},
+    {kop:'Benchmarks & sectoren',items:[
+      {tab:'benchmarks',btn:'t-bench',label:'Benchmarks'},
+      {tab:'sectoren',btn:'t-sectoren',label:'Sectoren',sa:true}]},
+    {tab:'templates',btn:'t-templates',label:'Templates'},
+    {tab:'veiligheid',btn:'t-veiligheid',label:'Veiligheid',sa:true}]}
+];
+// Platte lijst van alle zichtbare onderdelen (kopjes uitgevouwen), met hun groep.
+function menuOnderdelen(){
+  var uit=[];
+  MENU_GROEPEN.forEach(function(g){g.items.forEach(function(it){(it.kop?it.items:[it]).forEach(function(x){if(!x.sa||isSuperAdmin)uit.push({groep:g.id,it:x});});});});
+  return uit;
+}
+function menuGroepVan(tab){var m=menuOnderdelen().filter(function(x){return x.it.tab===tab;})[0];return m?m.groep:null;}
+var menuOpen=null; // null = de groep van het actieve onderdeel; anders de door de gebruiker gekozen groep ('' = alles dicht)
+function menuIsOpen(g){return menuOpen===null?menuGroepVan(activeTab)===g:menuOpen===g;}
+function menuKnopHtml(x,ingesprongen){
+  var n=x.teller?x.teller():null, toon=n!==null&&!(x.alleenBijWaarde&&!(n>0));
+  return '<button type="button" class="mar-item'+(activeTab===x.tab?' active':'')+(ingesprongen?' mar-sub':'')+'" id="'+x.btn+'"'+(activeTab===x.tab?' aria-current="page"':'')+'>'
+    +'<span>'+esc(x.label)+'</span>'+(toon?'<span class="mar-teller'+(x.actie&&n>0?' mar-actie':'')+'">'+n+'</span>':'')+'</button>';
+}
+function renderNav(){
+  var nav=document.getElementById('mar-nav');if(!nav)return;
+  var h='<button type="button" class="mar-kop mar-dash'+(activeTab==='dashboard'?' active':'')+'" id="t-dashboard"'+(activeTab==='dashboard'?' aria-current="page"':'')+'><span class="mar-ic" aria-hidden="true">&#127968;</span><span>Dashboard</span></button>';
+  MENU_GROEPEN.forEach(function(g){
+    var zicht=g.items.map(function(it){return it.kop?{kop:it.kop,items:it.items.filter(function(x){return !x.sa||isSuperAdmin;})}:it;}).filter(function(it){return it.kop?it.items.length:(!it.sa||isSuperAdmin);});
+    if(!zicht.length)return;
+    var open=menuIsOpen(g.id);
+    var acties=0;zicht.forEach(function(it){(it.kop?it.items:[it]).forEach(function(x){if(x.actie&&x.teller)acties+=x.teller()||0;});});
+    h+='<button type="button" class="mar-kop'+(menuGroepVan(activeTab)===g.id?' bevat-actief':'')+'" id="g-'+g.id+'" aria-expanded="'+open+'" aria-controls="gl-'+g.id+'">'
+      +'<span class="mar-ic" aria-hidden="true">'+g.icoon+'</span><span>'+esc(g.label)+'</span>'
+      +(!open&&acties>0?'<span class="mar-teller mar-actie" title="Openstaande acties">'+acties+'</span>':'')
+      +'<span class="mar-pijl" aria-hidden="true">'+(open?'&#9662;':'&#9656;')+'</span></button>'
+      +'<div class="mar-lijst" id="gl-'+g.id+'"'+(open?'':' style="display:none"')+'>'
+      +zicht.map(function(it){return it.kop?'<div class="mar-subkop">'+esc(it.kop)+'</div>'+it.items.map(function(x){return menuKnopHtml(x,true);}).join(''):menuKnopHtml(it,false);}).join('')
+      +'</div>';
+  });
+  nav.innerHTML=h;
+  var d=document.getElementById('t-dashboard');if(d)d.addEventListener('click',function(){menuGa('dashboard');});
+  MENU_GROEPEN.forEach(function(g){var k=document.getElementById('g-'+g.id);if(k)k.addEventListener('click',function(){menuOpen=menuIsOpen(g.id)?'':g.id;renderNav();});});
+  menuOnderdelen().forEach(function(m){var b=document.getElementById(m.it.btn);if(b)b.addEventListener('click',function(){menuGa(m.it.tab);});});
+}
+function menuGa(tab){
+  var m=menuOnderdelen().filter(function(x){return x.it.tab===tab;})[0];
+  if(tab!=='dashboard'&&!m)return; // onderdeel niet beschikbaar voor deze rol: niets tonen
+  if(m&&m.it.reset)m.it.reset();
+  activeTab=tab;menuOpen=null;renderDashboard();
+}
 function renderDashboard(){
-  var avg=scans.length?Math.round(scans.reduce(function(a,s){return a+(s.overall||0);},0)/scans.length):0;
-  var recent=scans.filter(function(s){return Date.now()-s.created_at<7*24*3600*1000;}).length;
   document.getElementById('app').innerHTML=
-    '<div class="stats-row">'
-    +'<div class="stat-card"><div class="stat-num">'+scans.length+'</div><div class="stat-lbl">Totaal scans</div></div>'
-    +'<div class="stat-card"><div class="stat-num">'+recent+'</div><div class="stat-lbl">7 dagen</div></div>'
-    +'<div class="stat-card"><div class="stat-num">'+(avg||'—')+'</div><div class="stat-lbl">Gem. score</div></div>'
-    +'<div class="stat-card"><div class="stat-num">'+callbacks.length+'</div><div class="stat-lbl">Terugbelverzoeken</div></div>'
-    +(gebruikerInfo?'<div class="stat-card"><div style="font-size:12px;color:var(--muted)">Ingelogd als</div><div style="font-size:14px;font-weight:600;color:var(--head)">'+esc(gebruikerInfo.naam)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(gebruikerInfo.bedrijf||'')+'</div></div>':'')
-    +'<div class="stat-card"><div class="stat-num">'+mnaList.length+'</div><div class="stat-lbl">M&A Trajecten</div></div>'
-    +'</div>'
-    +'<div id="sys-waarschuwingen" style="margin-bottom:1.5rem"></div>'
-    +'<div class="tabs">'
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='scans'?' active':'')+'" id="t-scans">Scans ('+scans.length+')</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='callbacks'?' active':'')+'" id="t-cb">Terugbelverzoeken ('+callbacks.length+')</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='leads'?' active':'')+'" id="t-leads">Leads ('+leads.filter(function(l){return l.status==='nieuw';}).length+')</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='proef'?' active':'')+'" id="t-proef">Proefaanvragen ('+proefAanvragen.filter(function(p){return p.status==='open';}).length+')</button>':'')
-    +'<button class="tab'+(activeTab==='mna'?' active':'')+'" id="t-mna">M&A Trajecten ('+mnaList.length+')</button>'
-    +'<button class="tab'+(activeTab==='docs'?' active':'')+'" id="t-docs">Documenten</button>'
-    +'<button class="tab'+(activeTab==='rapporten'?' active':'')+'" id="t-rapp">Scan rapporten ('+rapporten.length+')</button>'
-    +'<button class="tab'+(activeTab==='benchmarks'?' active':'')+'" id="t-bench">Benchmarks</button>'
-    +'<button class="tab'+(activeTab==='waardering'?' active':'')+'" id="t-waardering">&#9654; Waardering</button>'
-    +'<button class="tab'+(activeTab==='waarderingsmodel'?' active':'')+'" id="t-waarderingsmodel">&#9878; Waarderingsmodel</button>'
-    
-    +'<button class="tab'+(activeTab==='templates'?' active':'')+'" id="t-templates">&#128196; Templates</button>'
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='sectoren'?' active':'')+'" id="t-sectoren">&#127970; Sectoren</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='gebruikers'?' active':'')+'" id="t-geb" style="border-left:2px solid var(--gold)">&#128101; Gebruikers</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='kantoren'?' active':'')+'" id="t-kantoren">&#127970; Kantoren</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='tarieven'?' active':'')+'" id="t-tarieven">&euro; Tarieven</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='facturatie'?' active':'')+'" id="t-facturatie">&#129534; Facturatie</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='veiligheid'?' active':'')+'" id="t-veiligheid" style="border-left:2px solid var(--red)">&#128737; Veiligheid</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='matching'?' active':'')+'" id="t-matching">&#128279; Matching</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='sourcing'?' active':'')+'" id="t-sourcing">&#128225; Sourcing</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='pool'?' active':'')+'" id="t-pool">&#9878;&#65039; Pool</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='agenda'?' active':'')+'" id="t-agenda">&#128197; Agenda</button>':'')
-    +(isSuperAdmin?'<button class="tab'+(activeTab==='postvak'?' active':'')+'" id="t-postvak">&#128236; Postvak'+(postvakOngelezen>0?' ('+postvakOngelezen+')':'')+'</button>':'')
-    +'</div>'
-    +'<div id="tc"></div>';
-  if(isSuperAdmin){var ts=document.getElementById('t-scans');if(ts)ts.addEventListener('click',function(){activeTab='scans';scanFilter='';openRow=null;renderDashboard();});var tc2=document.getElementById('t-cb');if(tc2)tc2.addEventListener('click',function(){activeTab='callbacks';renderDashboard();});var tld=document.getElementById('t-leads');if(tld)tld.addEventListener('click',function(){activeTab='leads';renderDashboard();});var tpf=document.getElementById('t-proef');if(tpf)tpf.addEventListener('click',function(){activeTab='proef';renderDashboard();});}
-  document.getElementById('t-mna').addEventListener('click',function(){activeTab='mna';renderDashboard();});
-  document.getElementById('t-docs').addEventListener('click',function(){activeTab='docs';renderDashboard();});
-  document.getElementById('t-rapp').addEventListener('click',function(){activeTab='rapporten';renderDashboard();});
-  document.getElementById('t-bench').addEventListener('click',function(){activeTab='benchmarks';renderDashboard();});
-  document.getElementById('t-waardering').addEventListener('click',function(){activeTab='waardering';renderDashboard();});
-  document.getElementById('t-waarderingsmodel').addEventListener('click',function(){activeTab='waarderingsmodel';renderDashboard();});
-  document.getElementById('t-templates').addEventListener('click',function(){activeTab='templates';renderDashboard();});
-  if(isSuperAdmin){var stb=document.getElementById('t-sectoren');if(stb)stb.addEventListener('click',function(){activeTab='sectoren';renderDashboard();});}
-  if(isSuperAdmin){var gtb=document.getElementById('t-geb');if(gtb)gtb.addEventListener('click',function(){activeTab='gebruikers';renderDashboard();});}
-  if(isSuperAdmin){var ktb=document.getElementById('t-kantoren');if(ktb)ktb.addEventListener('click',function(){activeTab='kantoren';kantorenOpenId=null;renderDashboard();});}
-  if(isSuperAdmin){var ttb=document.getElementById('t-tarieven');if(ttb)ttb.addEventListener('click',function(){activeTab='tarieven';renderDashboard();});}
-  if(isSuperAdmin){var ftb=document.getElementById('t-facturatie');if(ftb)ftb.addEventListener('click',function(){activeTab='facturatie';factOpenId=null;renderDashboard();});}
-  if(isSuperAdmin){var vtb=document.getElementById('t-veiligheid');if(vtb)vtb.addEventListener('click',function(){activeTab='veiligheid';renderDashboard();});}
-  if(isSuperAdmin){var mtb=document.getElementById('t-matching');if(mtb)mtb.addEventListener('click',function(){activeTab='matching';renderDashboard();});}
-  if(isSuperAdmin){var srtb=document.getElementById('t-sourcing');if(srtb)srtb.addEventListener('click',function(){activeTab='sourcing';renderDashboard();});}
-  if(isSuperAdmin){var pltb=document.getElementById('t-pool');if(pltb)pltb.addEventListener('click',function(){activeTab='pool';renderDashboard();});}
-  if(isSuperAdmin){var agtb=document.getElementById('t-agenda');if(agtb)agtb.addEventListener('click',function(){activeTab='agenda';renderDashboard();});}
-  if(isSuperAdmin){var pvtb=document.getElementById('t-postvak');if(pvtb)pvtb.addEventListener('click',function(){activeTab='postvak';renderDashboard();});}
+    '<div class="mar-layout"><nav class="mar-nav" id="mar-nav" aria-label="Hoofdmenu"></nav>'
+    +'<div class="mar-main"><div id="sys-waarschuwingen"></div><div id="tc"></div></div></div>';
+  renderNav();
   renderTab();
   // Systeemwaarschuwingen: Signhost-herinnering bewust verwijderd (verzoek Marcel, juli 2026).
   // De container #sys-waarschuwingen blijft beschikbaar voor eventuele toekomstige meldingen.
 }
 
+// Managementdashboard (KVM-024): vier tegels met kerncijfers uit bestaande endpoints en al geladen gegevens. Een cijfer
+// dat niet (correct) geladen kan worden, wordt weggelaten; er wordt niets geschat of aangevuld.
+var dashExtra=null; // {postvak, agenda, facturen, bevindingen}: elk null als niet beschikbaar
+function renderManagementDashboard(el){
+  var avg=scans.length?Math.round(scans.reduce(function(a,s){return a+(s.overall||0);},0)/scans.length):0;
+  var recent=scans.filter(function(s){return Date.now()-s.created_at<7*24*3600*1000;}).length;
+  var x=dashExtra||{};
+  function regel(label,waarde,tab,actie){
+    if(waarde===null||waarde===undefined)return '';
+    return '<button type="button" class="dash-regel dash-klik" data-tab="'+tab+'"><span>'+esc(label)+'</span><strong class="'+(actie&&waarde>0?'dash-actie':'')+'">'+esc(String(waarde))+'</strong></button>';
+  }
+  var tegels=[
+    {g:'commercie',eerste:'leads',regels:[
+      isSuperAdmin?regel('Nieuwe leads',leads.filter(function(l){return l.status==='nieuw';}).length,'leads',true):'',
+      isSuperAdmin?regel('Terugbelverzoeken',callbacks.length,'callbacks',true):'',
+      isSuperAdmin?regel('Open proefaanvragen',proefAanvragen.filter(function(p){return p.status==='open';}).length,'proef',true):'',
+      isSuperAdmin?regel('Scans laatste 7 dagen',recent,'scans'):'',
+      isSuperAdmin?regel('Scans totaal (gem. score '+(avg||'–')+')',scans.length,'scans'):'',
+      regel('Scanrapporten',rapporten.length,'rapporten')]},
+    {g:'operatie',eerste:'mna',regels:[
+      regel('M&A-trajecten',mnaList.length,'mna'),
+      isSuperAdmin&&x.postvak?regel('Ongelezen in postvak',x.postvak.ongelezen,'postvak',true):'',
+      isSuperAdmin&&x.agenda?regel('Afspraakvoorstellen te behandelen',x.agenda.voorstellen,'agenda',true):'',
+      isSuperAdmin&&x.agenda?regel('Komende afspraken',x.agenda.komend,'agenda'):'']},
+    {g:'financien',eerste:'facturatie',regels:isSuperAdmin&&x.facturen?[
+      regel('Facturen '+x.facturen.periode+': concept',x.facturen.concept,'facturatie',true),
+      regel('Facturen '+x.facturen.periode+': definitief, niet betaald',x.facturen.definitief,'facturatie',true),
+      regel('Facturen '+x.facturen.periode+': betaald',x.facturen.betaald,'facturatie')]:[]},
+    {g:'beheer',eerste:'veiligheid',regels:[
+      isSuperAdmin&&x.bevindingen?regel('Open veiligheidsbevindingen (alle ernstniveaus)',x.bevindingen.open,'veiligheid',true):'']}
+  ];
+  var h='<div class="dash-kop"><h1 class="dash-titel">Dashboard</h1><div class="dash-sub">Kerncijfers en openstaande acties. Klik op een tegel of regel om het onderdeel te openen.</div></div>'
+    +(gebruikerInfo?'<div class="stat-card" style="max-width:260px;margin-bottom:1rem"><div style="font-size:12px;color:var(--muted)">Ingelogd als</div><div style="font-size:14px;font-weight:600;color:var(--head)">'+esc(gebruikerInfo.naam)+'</div><div style="font-size:11px;color:var(--muted)">'+esc(gebruikerInfo.bedrijf||'')+'</div></div>':'')
+    +'<div class="dash-tegels">';
+  tegels.forEach(function(t){
+    var g=MENU_GROEPEN.filter(function(y){return y.id===t.g;})[0];
+    if(!menuOnderdelen().some(function(m){return m.groep===t.g;}))return;
+    var r=t.regels.filter(Boolean).join('');
+    var eerste=menuOnderdelen().filter(function(m){return m.groep===t.g;})[0].it.tab;
+    h+='<section class="dash-tegel" aria-labelledby="dt-'+t.g+'"><button type="button" class="dash-tegel-kop dash-klik" id="dt-'+t.g+'" data-tab="'+eerste+'"><span class="mar-ic" aria-hidden="true">'+g.icoon+'</span>'+esc(g.label)+'<span class="mar-pijl" aria-hidden="true">&#8250;</span></button>'
+      +(r||'<div class="dash-leeg">'+(dashExtra===null&&(t.g==='financien'||t.g==='beheer')?'Laden…':'Geen kerncijfers beschikbaar.')+'</div>')+'</section>';
+  });
+  el.innerHTML=h+'</div>';
+  var knoppen=document.querySelectorAll('.dash-klik');
+  for(var i=0;i<knoppen.length;i++)(function(b){b.addEventListener('click',function(){menuGa(b.getAttribute('data-tab'));});})(knoppen[i]);
+  if(dashExtra===null&&isSuperAdmin)laadDashExtra();
+}
+async function laadDashExtra(){
+  var kop={headers:{'x-admin-key':adminKey}};
+  async function json(pad){try{var r=await fetch(WORKER+pad,kop);if(!r.ok)return null;var d=await r.json().catch(function(){return null;});return d&&d.ok===true?d:null;}catch(e){return null;}}
+  var periode=factVorigeMaand();
+  var res=await Promise.all([json('/mna/admin/postvak'),json('/mna/admin/agenda'),json('/mna/admin/facturatie/facturen?periode='+encodeURIComponent(periode)),json('/mna/admin/veiligheid/bevindingen')]);
+  if(!adminKey)return; // uitgelogd tijdens het laden
+  var pv=res[0],ag=res[1],fa=res[2],bv=res[3];
+  var telStatus=function(l,s){return l.filter(function(f){return f&&f.status===s;}).length;};
+  dashExtra={
+    postvak:pv&&typeof pv.ongelezen==='number'?{ongelezen:pv.ongelezen}:null,
+    agenda:ag&&Array.isArray(ag.voorstellen)&&Array.isArray(ag.komend)?{voorstellen:ag.voorstellen.length,komend:ag.komend.length}:null,
+    facturen:fa&&Array.isArray(fa.facturen)?{periode:periode,concept:telStatus(fa.facturen,'concept'),definitief:telStatus(fa.facturen,'definitief'),betaald:telStatus(fa.facturen,'betaald')}:null,
+    bevindingen:bv&&Array.isArray(bv.bevindingen)?{open:bv.bevindingen.filter(function(b){return b&&b.status==='open';}).length}:null
+  };
+  if(dashExtra.postvak)postvakOngelezen=dashExtra.postvak.ongelezen;
+  if(activeTab==='dashboard'){renderNav();var el=document.getElementById('tc');if(el)renderManagementDashboard(el);}
+}
+
 function renderTab(){
   var el=document.getElementById('tc');
-  if(activeTab==='scans')renderScansTab(el);
+  if(activeTab==='dashboard')renderManagementDashboard(el);
+  else if(activeTab==='scans')renderScansTab(el);
   else if(activeTab==='callbacks')renderCallbacksTab(el);
   else if(activeTab==='leads')renderLeadsTab(el);
   else if(activeTab==='proef')renderProefTab(el);
@@ -721,7 +843,7 @@ var SRC_MATCH_DREMPEL=55;
 // tarief, beschikbaarheid. De platformmarge per poolreview staat in de tab "€ Tarieven"
 // (pool_review_juridisch/fiscaal/cijfers).
 async function renderPoolTab(el){
-  el.innerHTML='<div style="padding:1rem;color:var(--muted);font-size:13px">Pool laden…</div>';
+  el.innerHTML='<div style="padding:1rem;color:var(--muted);font-size:13px">Specialistenpool laden…</div>';
   var lijst=[],opdrachten=[];
   try{
     var r=await fetch(WORKER+'/mna/admin/pool/specialisten',{headers:{'x-admin-key':adminKey}});
@@ -730,7 +852,7 @@ async function renderPoolTab(el){
     var r2=await fetch(WORKER+'/mna/admin/pool/opdrachten',{headers:{'x-admin-key':adminKey}});
     var d2=await r2.json();
     if(r2.ok&&d2.ok)opdrachten=d2.opdrachten||[];
-  }catch(e){ el.innerHTML='<div style="padding:1rem;color:var(--red)">Kon de pool niet laden.</div>'; return; }
+  }catch(e){ el.innerHTML='<div style="padding:1rem;color:var(--red)">Kon de specialistenpool niet laden.</div>'; return; }
   // Openstaande-opdrachten-overzicht (11 sep 2026, Marcel: "beter overzicht van openstaande pool-
   // opdrachten") — sorteert op dagen open (langst wachtend bovenaan), zodat een vastgelopen
   // aanvraag of een naderende deadline meteen opvalt i.p.v. dat je per traject moet gaan kijken.
@@ -932,6 +1054,7 @@ async function renderSourcingTab(el){
 
   html+='<div id="src-targets" style="margin-top:2.25rem;border-top:2px solid var(--border);padding-top:1.5rem"></div>';
 
+  if(document.getElementById('tc')!==el)return; // KVM-024: inmiddels naar een ander onderdeel genavigeerd
   el.innerHTML=html;
   renderTargetsBlok(el);
 
@@ -2020,7 +2143,7 @@ function renderSectorenTab(el){
     fetch(WORKER+'/mna/sectorprofielen',{headers:{'x-admin-key':adminKey}}).then(function(r){return r.json();}).then(function(d){
       profielen=(d&&d.profielen)||{};
       teken(d&&d.bron);
-    }).catch(function(){document.getElementById('sec-lijst').innerHTML='<div style="color:var(--red);font-size:13px">Kon profielen niet laden.</div>';});
+    }).catch(function(){var l=document.getElementById('sec-lijst');if(l)l.innerHTML='<div style="color:var(--red);font-size:13px">Kon profielen niet laden.</div>';});
   }
 
   function teken(bron){
@@ -5486,6 +5609,7 @@ async function renderMatchingTab(el){
       html+='</tbody></table>';
     }
     html+='</div>';
+    if(document.getElementById('tc')!==el)return; // KVM-024: inmiddels naar een ander onderdeel genavigeerd
     el.innerHTML=html;
 
     document.getElementById('mk-open-btn').addEventListener('click',function(){
