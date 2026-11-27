@@ -162,25 +162,24 @@ function wrMandaatHtml(x) {
   if (uit) h += wrMandaatDetail(x);
   return h + '</article>';
 }
+// N-215: de verwachte fee komt uitsluitend uit Honoraria (KVM-008). Hier leg je alleen de verwachting vast.
 function wrFeeKort(fee) {
   var v = fee && fee.verwacht;
-  if (!v || v.bedrag === null) return '<span class="wr-sub">' + wrEsc(v ? v.uitleg : 'Nog geen fee-afspraak vastgelegd') + '</span>';
-  return wrEsc(wrEuro(v.bedrag)) + '<div class="wr-sub">' + wrEsc(v.uitleg) + (v.moment ? ' · closing verwacht ' + wrEsc(v.moment) : '') + '</div>';
+  if (!v || v.bedrag === null) return '<span class="wr-sub">' + wrEsc(v ? v.uitleg : 'Nog geen honorariumafspraak vastgelegd') + '</span>';
+  return wrEsc(wrEuro(v.bedrag)) + '<div class="wr-sub">' + wrEsc(v.uitleg) + '</div>';
 }
 function wrFeeFormHtml(x) {
   var f = (x.fee && x.fee.afspraak) || {}, rev = f.rev || 0, id = wrEsc(x.id);
-  var veld = function (naam, label, extra) { return '<label>' + label + '<input name="' + naam + '" type="number" min="0" step="any" inputmode="decimal" value="' + wrEsc(f[naam] === null || f[naam] === undefined ? '' : f[naam]) + '"' + (extra || '') + '></label>'; };
-  return '<h3 class="wr-h3">Fee-afspraak met de opdrachtgever</h3><div class="wr-sub">Vul in wat is afgesproken. Laat leeg wat (nog) niet bekend is; de verwachte fee wordt alleen berekend als de gegevens compleet zijn.' + (f.door ? ' Laatst vastgelegd door ' + wrEsc(f.door) + ' op ' + wrEsc(wrDatum(f.op)) + '.' : '') + '</div>'
-    + '<form class="wr-form" onsubmit="return wrFee(event,\'' + id + '\',' + rev + ')">' + veld('retainer', 'Retainer (€)') + veld('succesfee_pct', 'Succesfee (%)', ' max="100"') + veld('succesfee_min', 'Minimum succesfee (€)') + veld('succesfee_vast', 'Of vaste succesfee (€)')
-    + veld('transactiewaarde', 'Verwachte transactiewaarde (€)') + '<label>Verwachte closing<input name="verwacht_closing" type="month" value="' + wrEsc(f.verwacht_closing || '') + '"></label>'
-    + '<button class="btn btn-sm" type="submit">Fee-afspraak opslaan</button></form>';
+  return '<h3 class="wr-h3">Verwachte transactie</h3><div class="wr-sub">De verwachte fee wordt berekend uit de honoraria van dit mandaat (hieronder) en deze verwachting. Zodra de closing bij Honoraria is geregistreerd, telt die in plaats van de verwachting.' + (f.door ? ' Laatst vastgelegd door ' + wrEsc(f.door) + ' op ' + wrEsc(wrDatum(f.op)) + '.' : '') + '</div>'
+    + '<form class="wr-form" onsubmit="return wrFee(event,\'' + id + '\',' + rev + ')"><label>Verwachte transactiewaarde (€)<input name="transactiewaarde" type="number" min="0" step="any" inputmode="decimal" value="' + wrEsc(f.transactiewaarde === null || f.transactiewaarde === undefined ? '' : f.transactiewaarde) + '"></label>'
+    + '<label>Verwachte closing<input name="verwacht_closing" type="month" value="' + wrEsc(f.verwacht_closing || '') + '"></label>'
+    + '<button class="btn btn-sm" type="submit">Verwachting opslaan</button></form>';
 }
 function wrFee(e, tid, rev) {
   e.preventDefault(); if (WR.bezig) return false;
-  var f = e.target, b = { traject_id: tid, rev: rev, verwacht_closing: f.elements.verwacht_closing.value || null };
-  ['retainer', 'succesfee_pct', 'succesfee_min', 'succesfee_vast', 'transactiewaarde'].forEach(function (k) { b[k] = f.elements[k].value === '' ? null : Number(f.elements[k].value); });
+  var f = e.target, b = { traject_id: tid, rev: rev, verwacht_closing: f.elements.verwacht_closing.value || null, transactiewaarde: f.elements.transactiewaarde.value === '' ? null : Number(f.elements.transactiewaarde.value) };
   WR.bezig = true;
-  wrApi('POST', '/mna/werkruimte/fee', b).then(function (r) { wrNa(r, r.status === 200 ? 'Fee-afspraak opgeslagen' + (r.json.verwacht && r.json.verwacht.bedrag !== null ? ': verwachte fee ' + wrEuro(r.json.verwacht.bedrag) + '.' : '. ' + (r.json.verwacht ? r.json.verwacht.uitleg + '.' : '')) : ''); });
+  wrApi('POST', '/mna/werkruimte/fee', b).then(function (r) { wrNa(r, r.status === 200 ? 'Verwachting opgeslagen' + (r.json.verwacht && r.json.verwacht.bedrag !== null ? ': verwachte fee ' + wrEuro(r.json.verwacht.bedrag) + '.' : '. ' + (r.json.verwacht ? r.json.verwacht.uitleg + '.' : '')) : ''); });
   return false;
 }
 function wrMandaatDetail(x) {
@@ -383,9 +382,9 @@ function wrTekenCockpit() {
     }).join('') + '</tbody><tfoot><tr><th>Totaal</th><th>' + wrEsc(wrEuro(tot.fee)) + '</th><th><span class="wr-sub">–</span></th><th>' + wrEsc(wrEuro(tot.gef)) + '</th><th>' + wrEsc(wrEuro(tot.ont)) + '</th><th>' + wrEsc(wrEuro(tot.open)) + '</th></tr></tfoot></table></div>';
   var pr = c.prognose;
   if (pr) {
-    h += '<div class="wr-paneel"><h2 class="wr-h">Prognose verwachte fees per kwartaal</h2><div class="wr-sub">' + wrEsc(pr.bron) + '. Gebaseerd op de verwachte closingmaand per mandaat.</div>'
-      + (pr.per_kwartaal.length ? '<div class="wr-tabel-wrap"><table class="wr-tabel"><thead><tr><th>Kwartaal</th><th>Verwachte fees</th><th>Mandaten</th></tr></thead><tbody>' + pr.per_kwartaal.map(function (k) { return '<tr><td>' + wrEsc(k.periode) + '</td><td>' + wrEsc(wrEuro(k.bedrag)) + '</td><td>' + k.mandaten + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="wr-leeg">Nog geen complete fee-afspraken met een verwachte closingmaand.</div>')
-      + ((pr.zonder_closingmaand || pr.onvolledige_afspraak) ? '<div class="wr-sub">Niet in de prognose: ' + (pr.zonder_closingmaand ? pr.zonder_closingmaand + ' zonder closingmaand' : '') + (pr.zonder_closingmaand && pr.onvolledige_afspraak ? ', ' : '') + (pr.onvolledige_afspraak ? pr.onvolledige_afspraak + ' met een onvolledige fee-afspraak' : '') + '.</div>' : '') + '</div>';
+    h += '<div class="wr-paneel"><h2 class="wr-h">Prognose verwachte fees per kwartaal</h2><div class="wr-sub">' + wrEsc(pr.bron) + '. Elk bedrag staat in het kwartaal waarin het volgens de honorariumafspraak verschuldigd wordt (retainer per termijn, succesfee bij de verwachte of geregistreerde closing).</div>'
+      + (pr.per_kwartaal.length ? '<div class="wr-tabel-wrap"><table class="wr-tabel"><thead><tr><th>Kwartaal</th><th>Verwachte fees</th><th>Mandaten</th></tr></thead><tbody>' + pr.per_kwartaal.map(function (k) { return '<tr><td>' + wrEsc(k.periode) + '</td><td>' + wrEsc(wrEuro(k.bedrag)) + '</td><td>' + k.mandaten + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="wr-leeg">Nog geen complete honorariumafspraken met een (verwachte) closing.</div>')
+      + ((pr.zonder_closingmaand || pr.onvolledige_afspraak) ? '<div class="wr-sub">Niet in de prognose: ' + (pr.zonder_closingmaand ? pr.zonder_closingmaand + ' zonder closingmaand' : '') + (pr.zonder_closingmaand && pr.onvolledige_afspraak ? ', ' : '') + (pr.onvolledige_afspraak ? pr.onvolledige_afspraak + ' met een onvolledige honorariumafspraak' : '') + '.</div>' : '') + '</div>';
   }
   h += wrKoppelingHtml();
   wrPagina('cockpit', h);

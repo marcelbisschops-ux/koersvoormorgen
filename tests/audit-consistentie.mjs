@@ -2506,6 +2506,18 @@ log('KVM-008 honoraria: scherm in de KantoorCockpit (escaping, niet te berekenen
   } catch (e) { warn('KVM-008: tests/kvm008-honoraria-ui.mjs faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
 }
 
+log('N-215: één honorariummodel; het OHW-overleg legt alleen de verwachting vast, de fee komt uit Honoraria (KVM-008)');
+{
+  try {
+    const { execFileSync } = await import('child_process');
+    execFileSync(process.execPath, [path.join(ROOT, 'tests/n215-verwachting-ui.mjs')], { stdio: 'pipe', cwd: ROOT });
+    const h = fs.readFileSync(path.join(ROOT, 'mna/08-handleiding.js'), 'utf8'), adv = fs.readFileSync(path.join(ROOT, 'adv.html'), 'utf8');
+    const oud = /fee-afspraak met de opdrachtgever vast: retainer/;
+    if (oud.test(h) || oud.test(adv) || !/KantoorCockpit, honoraria en koppeling/.test(h) || !/KantoorCockpit, honoraria en koppeling/.test(adv)) warn('N-215: handleiding mna/adv beschrijft nog het oude feemodel');
+    else ok('N-215: verwachtingsformulier (tests/n215-verwachting-ui.mjs groen) en handleiding mna en adv.');
+  } catch (e) { warn('N-215: tests/n215-verwachting-ui.mjs faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
+}
+
 log('Releaseherkomst: geen uitrol vanuit een werkboom met wijzigingen of niet-vastgelegde bestanden (Codex-review 18-11, P2)');
 {
   try {
