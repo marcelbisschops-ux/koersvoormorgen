@@ -5,7 +5,7 @@
 //     classificatie wijzigen en verwijderen; plus onbekend document-id en een code van een ander traject.
 // Het BEM-bestand wordt rechtstreeks in staging-D1/R2 gezet (geen upload, dus geen AI-analyse). STAGING, fictief, ruimt op.
 import { execFileSync } from 'child_process';
-import { api, WORKER, leesAdminKey, d1, ruimTrajectOp, accepteerPlatformvoorwaarden, check, kop, samenvatting } from './lib.mjs';
+import { api, WORKER, leesAdminKey, d1, ruimTrajectOp, accepteerPlatformvoorwaarden, check, kop, samenvatting, wranglerEnv } from './lib.mjs';
 
 const A = leesAdminKey();
 const nu = Date.now();
@@ -16,7 +16,7 @@ const r2Keys = [];
 const r2Put = (key) => {
   const f = '/tmp/n204-' + nu + '.pdf';
   execFileSync('/bin/sh', ['-c', "printf '%%PDF-1.4 SYNTH-BEM-N204-PDF fee' > " + f]);
-  execFileSync('npx', ['wrangler', 'r2', 'object', 'put', 'kantoorinzicht-docs-staging/' + key, '--file', f, '--content-type', 'application/pdf', '--remote'], { cwd: BE, stdio: 'ignore' });
+  execFileSync('npx', ['wrangler', 'r2', 'object', 'put', 'kantoorinzicht-docs-staging/' + key, '--file', f, '--content-type', 'application/pdf', '--remote'], { cwd: BE, stdio: 'ignore', env: wranglerEnv() });
   r2Keys.push(key);
 };
 async function traject(opdr) {
@@ -82,6 +82,6 @@ try {
 } finally {
   kop('Opruimen');
   for (const c of gemaakt) check('opgeruimd ' + c.slice(0, 3) + '…', !!(await ruimTrajectOp(c, A)).ok);
-  for (const k of r2Keys) { try { execFileSync('npx', ['wrangler', 'r2', 'object', 'delete', 'kantoorinzicht-docs-staging/' + k, '--remote'], { cwd: BE, stdio: 'ignore' }); } catch (e) { /* al weg via trajectopruiming */ } }
+  for (const k of r2Keys) { try { execFileSync('npx', ['wrangler', 'r2', 'object', 'delete', 'kantoorinzicht-docs-staging/' + k, '--remote'], { cwd: BE, stdio: 'ignore', env: wranglerEnv() }); } catch (e) { /* al weg via trajectopruiming */ } }
 }
 samenvatting();

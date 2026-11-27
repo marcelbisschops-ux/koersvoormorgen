@@ -31,6 +31,10 @@ if [ -z "${ADMIN_KEY:-}" ]; then
   echo "⚠ Geen ADMIN_KEY in environment — module-gating-test wordt overgeslagen, rest draait gewoon."
 fi
 
+# Centraal slot (26-11-2026): één UI-suite tegelijk over alle werkbomen heen (poort 8799 + gedeelde staging).
+. "$REPO_DIR/scripts/fe-suite-slot.sh"
+fe_suite_slot_pak || exit 1
+
 if ! npx playwright test; then
   echo "" >&2
   echo "✗ UI-testsuite gefaald — push geweigerd. Zie hierboven." >&2

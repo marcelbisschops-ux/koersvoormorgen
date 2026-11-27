@@ -28,6 +28,8 @@
 #            BACKUP_DIR="/Volumes/Backup/KI" bash scripts/backup.sh   (eigen locatie)
 # ══════════════════════════════════════════════════════════════════
 set -euo pipefail
+# N-213: nooit een ingetrokken token uit een oude omgeving gebruiken.
+. "$(cd "$(dirname "$0")" && pwd)/cf-auth.sh"; cf_auth_opschonen
 
 # Standaard: iCloud Drive (staat los van Cloudflare én van dit apparaat).
 # Val terug op de home-map als iCloud Drive niet beschikbaar is.

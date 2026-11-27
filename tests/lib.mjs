@@ -140,6 +140,22 @@ export async function api(method, pad, { body, headers, adminKey } = {}) {
 
 const STAGING_D1_NAAM = 'kantoorinzicht-staging';
 
+// N-213 (27-11-2026): een ingetrokken CLOUDFLARE_API_TOKEN uit een oude omgeving liet alle D1-verificaties falen
+// ("niet ingelogd"). Eenmalig per proces aan Cloudflare vragen of een aanwezige token geldig is (waarde via stdin, nooit
+// in argv of uitvoer). Ongeldig → wrangler draait zonder die variabele (OAuth-login). Geldig (CI) of geen netwerk → ongewijzigd.
+let _wranglerEnv = null;
+export function wranglerEnv() {
+  if (_wranglerEnv) return _wranglerEnv;
+  const env = { ...process.env };
+  if (env.CLOUDFLARE_API_TOKEN) {
+    let antw = '';
+    try { antw = execFileSync('curl', ['-s', '-m', '10', '-H', '@-', 'https://api.cloudflare.com/client/v4/user/tokens/verify'], { input: 'Authorization: Bearer ' + env.CLOUDFLARE_API_TOKEN + '\n', encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }); } catch (e) { antw = ''; }
+    if (/"code":\s*1000|Invalid API Token/.test(antw)) { delete env.CLOUDFLARE_API_TOKEN; console.warn('⚠ Ongeldige/ingetrokken CLOUDFLARE_API_TOKEN genegeerd; wrangler gebruikt de OAuth-login.'); }
+  }
+  _wranglerEnv = env;
+  return env;
+}
+
 export function zetMfaUitVoorTest(email) {
   if (!/staging/i.test(WORKER)) {
     return { ok: false, reden: 'WORKER_URL is geen staging-omgeving — MFA-bypass geweigerd (veiligheidsgrens, nooit tegen productie)' };
@@ -147,7 +163,7 @@ export function zetMfaUitVoorTest(email) {
   const sql = "UPDATE bf_gebruikers SET mfa=0 WHERE email='" + String(email).replace(/'/g, "''") + "'";
   try {
     execFileSync('npx', ['wrangler', 'd1', 'execute', STAGING_D1_NAAM, '--remote', '--command', sql],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: wranglerEnv() });
     return { ok: true };
   } catch (e) {
     // Diagnostisch (18 sep 2026): wrangler schrijft zijn eigen foutmelding naar stdout, niet
@@ -201,7 +217,7 @@ function wranglerFout(e) {
 
 function standaardWranglerUitvoer(sql) {
   return execFileSync('npx', ['wrangler', 'd1', 'execute', D1_NAAM, '--remote', '--json', '--command', sql],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: D1_TIMEOUT_MS, killSignal: 'SIGTERM' });
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: D1_TIMEOUT_MS, killSignal: 'SIGTERM', env: wranglerEnv() });
 }
 
 function korteWacht(ms) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); }
