@@ -203,6 +203,8 @@ tr:hover td{background:var(--bg);cursor:pointer}
 #toast.show{opacity:1}
 /* KVM-015 Quick Visit: opmaak staat in adv-bezoek.js (bvCss), ook gebruikt door mna.html */
 </style>
+<!-- Organisatiegebonden huisstijl (KVM-016): standaard leeg, alleen weergave; zie functions/_middleware.js. -->
+<link rel="stylesheet" href="/assets/kantoorhuisstijl.css">
 </head>
 <body>
 <div id="app"></div>
@@ -215,7 +217,10 @@ tr:hover td{background:var(--bg);cursor:pointer}
 // sturen; met deze whitelist zijn alleen deze twee, door onszelf beheerde, bestemmingen mogelijk.
 var _WORKER_WHITELIST=['https://kantoorinzicht.marcel-bisschops.workers.dev','https://kantoorinzicht-staging.marcel-bisschops.workers.dev'];
 var _WORKER_PARAM=new URLSearchParams(location.search).get('worker')||'';
-var WORKER=_WORKER_WHITELIST.includes(_WORKER_PARAM)?_WORKER_PARAM:'https://kantoorinzicht.marcel-bisschops.workers.dev';
+// KVM-016 (26-11-2026): zelfde regel als kvmKiesWorker in mna/01 (N-174): op een *.pages.dev-preview of
+// -alias (o.a. de vaste kantooralias voor demo/pilot) altijd staging, ongeacht ?worker=, zodat zo'n omgeving
+// nooit productiegegevens kan raken. Op koersvoormorgen.nl en lokaal ongewijzigd.
+var WORKER=/\.pages\.dev$/i.test(location.hostname)?_WORKER_WHITELIST[1]:(_WORKER_WHITELIST.includes(_WORKER_PARAM)?_WORKER_PARAM:'https://kantoorinzicht.marcel-bisschops.workers.dev');
 
 // ===== P1C (N-95, 3 okt 2026) — promotie van een koopmandaat-target en eigen trajectdoorgang =====
 // mna.html (koopmandaat) opent dit portaal met ?promotie={mandaatcode}&target={id} of ?traject={id}.

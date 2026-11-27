@@ -1,0 +1,56 @@
+/* © 2026 Bisschops Financing B.V. Alle rechten voorbehouden.
+   Kantoorhuisstijl MaeS & Partners (KVM-016), uitsluitend geserveerd op de vaste MaeS-alias
+   (functions/_middleware.js). Overgenomen uit de officiële huisstijl: logo (origineel SVG),
+   navy #2B2964, rood #B22417, Roboto Slab (koppen) en Roboto (tekst). Alleen weergave: zet de
+   bestaande CSS-variabelen van mna.html/adv.html en Design 2.0 om en vervangt de merkstip door het
+   logo. Geen schermen, functies of rechten veranderen. */
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;600;700&family=Roboto:wght@400;500;700&display=swap');
+
+:root{
+  --kh-navy:#2B2964; --kh-navy-donker:#1E1C4A; --kh-rood:#B22417; --kh-navy-vlak:#ECEBF5;
+  --kh-font-kop:'Roboto Slab',Georgia,serif; --kh-font-tekst:'Roboto',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --kh-logo:url('/assets/kantoren/maes/logo.svg');
+}
+/* Klassieke vormgeving (?ui=1) */
+:root{ --teal:#2B2964; --teal-dim:#1E1C4A; --teal-dark:#1E1C4A; --teal-bg:rgba(43,41,100,.08); --teal-light:#ECEBF5; --teal-border:#C9C7E2; }
+/* Design 2.0 (standaard) */
+html[data-ui="2"]{
+  --k2-nav:#2B2964; --k2-nav-actief:#3A3880; --k2-nav-tekst:#E4E3F3; --k2-nav-sub:#B9B7DC;
+  --k2-accent:#2B2964; --k2-accent-sterk:#1E1C4A; --k2-accent-vlak:#ECEBF5; --k2-voortgang:#B22417;
+  --k2-font:var(--kh-font-tekst);
+  --k2-focus:0 0 0 3px rgba(178,36,23,.28);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --teal:#A9A6E6; --teal-dim:#C4C2F0; --teal-dark:#C4C2F0; --teal-bg:rgba(169,166,230,.16); --teal-light:#24234A; --teal-border:#44427A; }
+  html[data-ui="2"]{ --k2-nav:#3A3880; --k2-nav-actief:#4A47A0; --k2-accent:#A9A6E6; --k2-accent-sterk:#C4C2F0; --k2-accent-vlak:rgba(169,166,230,.16); --k2-voortgang:#E0675B; }
+}
+body{font-family:var(--kh-font-tekst)}
+h1,h2,h3,.login-title,.ttl,.doc-title{font-family:var(--kh-font-kop)!important}
+
+/* Merkstip → MaeS-logo (op een witte drager, zodat het ook op de donkere navigatiebalk leesbaar is). */
+.hdr-dot,.wdot,.login-dot{
+  width:118px!important;height:26px!important;border-radius:4px!important;flex:0 0 auto;
+  background:#fff var(--kh-logo) center/contain no-repeat!important;padding:0;box-sizing:content-box;
+  border:4px solid #fff;
+}
+/* Merknaam in de kop wordt een bescheiden "Powered by Koers voor Morgen". */
+.hdr-brand,.login-brand{font-size:0!important;letter-spacing:0!important;gap:12px}
+.hdr-brand::after,.login-brand::after{content:'Powered by Koers voor Morgen';font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:none;color:var(--muted);opacity:.85;font-family:var(--kh-font-tekst)}
+.login-brand-name{display:none}
+.hdr-brand{flex-shrink:0}
+.hdr-brand::after{white-space:nowrap}
+@media (max-width:1200px){ .hdr-brand::after{display:none} }
+
+/* Inlogpagina in MaeS-stijl */
+.login-outer{background:linear-gradient(115deg,#242251 0%,#2B2964 55%,#39367a 100%)!important}
+.login-card{border-top:4px solid var(--kh-rood)!important}
+.login-brand{flex-direction:column;align-items:flex-start;gap:10px}
+.login-brand .login-dot{width:220px!important;height:36px!important;border:0;background-position:left center!important;background-color:transparent!important}
+@media (prefers-color-scheme: dark){ .login-brand .login-dot{background-color:#fff!important;border:6px solid #fff;border-radius:6px!important} }
+
+/* Knoppen: navy, rood accent bij hover/focus */
+.btn:hover:not(:disabled),.btn-gen:hover:not(:disabled){box-shadow:inset 0 -3px 0 var(--kh-rood)}
+@media (max-width:1024px){ .hdr-dot,.wdot{width:92px!important;height:20px!important} }
+@media (max-width:600px){
+  .login-brand .login-dot{width:180px!important;height:30px!important}
+}
