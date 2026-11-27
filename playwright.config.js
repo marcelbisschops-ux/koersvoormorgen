@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 // N-205 (13-11-2026): de staging-CORS staat alleen localhost:8799 toe, dus de poort blijft 8799. Met
 // reuseExistingServer kon een server uit een ANDERE werkboom worden hergebruikt (testte dan andere bestanden);
 // globalSetup controleert daarom dat de draaiende server exact deze werkboom serveert en stopt anders met een fout.
-const PORT = 8799;
+// Centraal suiteslot (27-11-2026): scripts/fe-suite-slot.sh kiest 8799 of 8801 (beide in de staging-CORS) en zet KVM_FE_PORT.
+const PORT = Number(process.env.KVM_FE_PORT || 8799);
 
 export default defineConfig({
   testDir: './tests',
