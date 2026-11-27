@@ -941,6 +941,7 @@ function hbZoek(invoer){
 // sessietoken bleef tot 8 uur geldig op de server, ook na uitloggen. Nu ook server-side intrekken.
 async function doLogout(){
   var tok=G.token;
+  if(typeof bvSluit==='function')bvSluit();
   G.token='';G.email='';P1C_CTX=null;
   try{ if(tok) await fetch(WORKER+'/gebruikers/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessie_token:tok})}); }catch(e){}
   renderLogin();

@@ -3,13 +3,14 @@
 import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
+import { createHash } from 'node:crypto';
 let n = 0, fout = 0; const ok = (c, m, d) => { n++; if (c) console.log('✓ ' + m); else { fout++; console.log('✗ ' + m + (d !== undefined ? '  ' + String(d).slice(0, 400) : '')); } };
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const opslag = {}; const posts = []; let antwoorden = [];
 const overlay = { innerHTML: '', remove() { delete el['bv-overlay']; } };
 const el = {};
-const ctx = { console, G: { token: 'tok' }, WORKER: 'https://synth.invalid', toasts: [],
-  window: { crypto: { randomUUID: () => 'uuid-' + (++ctx.teller) }, localStorage: { getItem: (k) => opslag[k] || null, setItem: (k, v) => { opslag[k] = String(v); } }, confirm: () => true },
+const ctx = { console, TextEncoder, G: { token: 'tok' }, WORKER: 'https://synth.invalid', toasts: [],
+  window: { crypto: { subtle: { async digest(_, bytes) { return createHash('sha256').update(bytes).digest(); } }, randomUUID: () => 'uuid-' + (++ctx.teller) }, localStorage: { getItem: (k) => opslag[k] || null, setItem: (k, v) => { opslag[k] = String(v); } }, confirm: () => true },
   crypto: { randomUUID: () => 'uuid-' + (++ctx.teller) }, teller: 0, setTimeout: (f) => { f(); return 1; }, clearTimeout: () => {},
   document: { activeElement: null, body: { appendChild: (o) => { el[o.id] = o; } }, createElement: () => Object.assign({}, overlay) },
   ge: (id) => el[id] || null, toast: (m) => ctx.toasts.push(m),
@@ -19,7 +20,7 @@ vm.runInContext(fs.readFileSync(path.join(ROOT, 'adv-bezoek.js'), 'utf8'), ctx);
 const wacht = () => new Promise((r) => setImmediate(r));
 const X = '<img src=x onerror=alert(1)>';
 const lijsten = { gesprek_type: ['Kennismaking', 'Intake'], perspectief: ['Potentiële verkoper'], resultaat: ['Positief', 'Nog onbekend'], vervolgactie: ['Terugbellen', 'Geen actie', 'Eigen actie'] };
-const context = { ok: true, gebruiker: { id: 'U1', naam: 'Synth' }, lijsten, eigenaren: [{ id: 'U1', naam: 'Synth' }, { id: 'U2', naam: X }], trajecten: [{ id: 'SYNT1', naam: X }], concepten: [] };
+const context = { ok: true, gebruiker: { id: 'U1', naam: 'Synth', kantoor_id: 'K1' }, lijsten, eigenaren: [{ id: 'U1', naam: 'Synth' }, { id: 'U2', naam: X }], trajecten: [{ id: 'SYNT1', naam: X }], concepten: [] };
 
 // ── Pure functies ──
 const f = ctx.bvLeegFormulier({ traject_id: 'SYNT1' });
@@ -41,11 +42,12 @@ b = ctx.bvPayload(f, true);
 ok(b.organisatie_id === 'org1' && !b.nieuwe_organisatie && b.contactpersoon_ids[0] === 'c1' && b.nieuwe_contacten[0].naam === 'Synth Contact' && b.zichtbaarheid === 'privé' && b.negeer_suggesties === true, 'payload: bestaande relatie, contacten, privé en bevestigde nieuwe');
 
 // ── Lokale opslag ──
-ok(ctx.bvLokaalBewaar(f) === true && JSON.parse(opslag['kvm-bezoek-concepten'])[f.sleutel].f.gesprek_type === 'Intake', 'concept lokaal bewaard');
-ctx.bvLokaalWis(f.sleutel);
-ok(!JSON.parse(opslag['kvm-bezoek-concepten'])[f.sleutel], 'concept lokaal gewist');
+const crmVak = await ctx.bvConceptVak({ opts: {} }, context);
+ok(ctx.bvLokaalBewaar(f, crmVak) === true && JSON.parse(opslag[crmVak])[f.sleutel].f.gesprek_type === 'Intake', 'concept lokaal bewaard');
+ctx.bvLokaalWis(f.sleutel, crmVak);
+ok(!JSON.parse(opslag[crmVak])[f.sleutel], 'concept lokaal gewist');
 const kapot = ctx.window.localStorage; ctx.window.localStorage = { getItem() { throw new Error('geblokkeerd'); }, setItem() { throw new Error('geblokkeerd'); } };
-ok(ctx.bvLokaalBewaar(f) === false && JSON.stringify(ctx.bvLokaalLees()) === '{}', 'geblokkeerde opslag (privévenster) breekt niets');
+ok(ctx.bvLokaalBewaar(f, crmVak) === false && JSON.stringify(ctx.bvLokaalLees(crmVak)) === '{}', 'geblokkeerde opslag (privévenster) breekt niets');
 ctx.window.localStorage = kapot;
 
 // ── Herhaling bij netwerkfout met dezelfde aanvraag ──
@@ -70,7 +72,7 @@ ctx.bvKies('gesprek_type', 'Kennismaking');
 antwoorden.push({ status: 200, json: { ok: true } }, { status: 200, json: { ok: true, organisatie: { id: 'org9', naam: 'Synth Bakkerij' }, contactpersonen: [{ id: 'c9', naam: 'Synth Persoon' }], gesprekken: [{ id: 'g1', gesprek_type: 'Intake', resultaat: 'Positief', gesprek_op: 1, tekst: X, vervolgacties: [X] }], open_taken: [{ id: 't1', titel: X, eigenaar_naam: 'Synth', deadline: '2026-12-01' }], kansen: [{ id: 'k1', type: 'sell-side', fase: 'in_gesprek', omschrijving: X }] } }); // eerst de concept-autosave, dan de briefing
 ctx.bvKiesOrg('org9'); await wacht();
 ok(ctx.BV.f.organisatie_id === 'org9' && el['bv-overlay'].innerHTML.includes('Synth Persoon'), 'relatie gekozen en contactpersonen geladen');
-ok(JSON.parse(opslag['kvm-bezoek-concepten'])[ctx.BV.f.sleutel].f.organisatie_id === 'org9', 'elke wijziging staat direct lokaal');
+ok(JSON.parse(opslag[crmVak])[ctx.BV.f.sleutel].f.organisatie_id === 'org9', 'elke wijziging staat direct lokaal');
 const conceptPost = posts.filter((p) => p.url.endsWith('/gebruikers/crm/bezoek/concept')).pop();
 ok(conceptPost && JSON.parse(conceptPost.opts.body).sleutel === ctx.BV.f.sleutel && conceptPost.opts.headers['x-gebruiker-token'] === 'tok', 'concept ook naar de server met sleutel en token');
 const sleutel = ctx.BV.f.sleutel;
@@ -78,7 +80,7 @@ ctx.BV_WACHT.length = 0; // geen wachttijd in de test
 antwoorden.push({ netwerk: true });
 ctx.bvOpslaan(); await wacht(); await wacht();
 h = el['bv-overlay'].innerHTML;
-ok(/veilig bewaard op dit apparaat/.test(h) && JSON.parse(opslag['kvm-bezoek-concepten'])[sleutel], 'storing: melding, scherm blijft open en concept blijft lokaal');
+ok(/bewaard op dit apparaat/.test(h) && JSON.parse(opslag[crmVak])[sleutel], 'storing: melding, scherm blijft open en concept blijft lokaal');
 ctx.bvAndereOrg(); ctx.BV.f.zoek = 'Synth Nieuwe Relatie'; ctx.bvNieuweOrg();
 antwoorden.push({ status: 409, json: { code: 'MOGELIJK_DUPLICAAT', error: 'Deze relatie lijkt al te bestaan.', suggesties: [{ id: 'org9', naam: X, redenen: ['vergelijkbare naam'] }] } });
 ctx.bvOpslaan(); await wacht(); await wacht();
@@ -88,16 +90,27 @@ antwoorden.push({ status: 200, json: { ok: true, acties: [{ titel: 'Terugbellen'
 ctx.bvOpslaan(true); await wacht(); await wacht();
 const saves = posts.filter((p) => p.url.endsWith('/gebruikers/crm/bezoek'));
 ok(saves.length === 3 && saves.every((p) => JSON.parse(p.opts.body).sleutel === sleutel) && JSON.parse(saves[2].opts.body).negeer_suggesties === true, 'alle pogingen met dezelfde sleutel (idempotent); bevestiging stuurt negeer_suggesties');
-ok(ctx.BV === null && ctx.toasts.pop() === 'Bezoekverslag opgeslagen met 1 vervolgactie.' && !JSON.parse(opslag['kvm-bezoek-concepten'])[sleutel], 'na opslaan: gesloten, bevestiging, lokaal concept opgeruimd');
+ok(ctx.BV === null && ctx.toasts.pop() === 'Bezoekverslag opgeslagen met 1 vervolgactie.' && !JSON.parse(opslag[crmVak])[sleutel], 'na opslaan: gesloten, bevestiging, lokaal concept opgeruimd');
 
 // ── Concept hervatten ──
-const oud = ctx.bvLeegFormulier({}); oud.zoek = 'Synth Hervat'; oud.gesprek_type = 'Intake'; ctx.bvLokaalBewaar(oud);
+const oud = ctx.bvLeegFormulier({}); oud.zoek = 'Synth Hervat'; oud.gesprek_type = 'Intake'; ctx.bvLokaalBewaar(oud, crmVak);
 antwoorden = [{ status: 200, json: context }, { status: 200, json: [] }];
 ctx.bvOpen({}); await wacht(); await wacht();
 ok(el['bv-overlay'].innerHTML.includes('Niet afgemaakt') && el['bv-overlay'].innerHTML.includes('Synth Hervat'), 'niet afgemaakt concept wordt aangeboden');
 ctx.bvHervat(0);
 ok(ctx.BV.f.sleutel === oud.sleutel && ctx.BV.f.gesprek_type === 'Intake', 'hervatten gebruikt dezelfde sleutel (geen tweede verslag)');
 ctx.bvSluit();
+const andereActor = { ...context, gebruiker: { ...context.gebruiker, id: 'U2' } };
+const anderKantoor = { ...context, gebruiker: { ...context.gebruiker, kantoor_id: 'K2' } };
+ok(await ctx.bvConceptVak({ opts: {} }, andereActor) !== crmVak && await ctx.bvConceptVak({ opts: {} }, anderKantoor) !== crmVak, 'CRM-conceptvak gescheiden per geverifieerd account en kantoor');
+ok(await ctx.bvConceptVak({ opts: {} }, { gebruiker: { id: 'U1' } }) === null, 'zonder geverifieerd kantoor geen lokaal conceptvak');
+ok(!Object.keys(opslag).includes('kvm-bezoek-concepten'), 'historische originbrede lokale sleutel wordt niet gebruikt');
+antwoorden = [{ status: 200, json: context }, { status: 200, json: [] }];
+ctx.bvOpen({ organisatie_id: 'org9' }); await wacht(); await wacht();
+ctx.BV.f.gesprek_type = 'Intake';
+antwoorden = [{ status: 200, json: { gelijktijdige_wijzigingen: ['plaats', 'kans'] } }];
+ctx.bvOpslaan(); await wacht(); await wacht();
+ok(ctx.BV === null && ctx.toasts.pop().includes('overgeslagen'), 'gelijktijdige wijziging gemeld bij succesvol opgeslagen verslag');
 // ── Module uit: nette melding ──
 antwoorden = [{ status: 403, json: { error: 'De CRM-module is niet actief voor uw kantoor.' } }, { status: 403, json: {} }];
 ctx.bvOpen({}); await wacht(); await wacht();
@@ -181,9 +194,13 @@ const tp = ctx.bvPayload(ctx.BV.f);
 ok(tp.deelnemers === 'Synth DGA' && !tp.organisatie_id && !tp.nieuwe_organisatie && !tp.zichtbaarheid && tp.vervolgacties.length === 1, 'begeleider: payload zonder relatievelden', JSON.stringify(tp));
 const voorConcept = posts.filter((p) => p.url.indexOf('/bezoek/concept') >= 0).length;
 ctx.bvZet('tekst', 'x');
-ok(posts.filter((p) => p.url.indexOf('/bezoek/concept') >= 0).length === voorConcept && JSON.parse(opslag['kvm-bezoek-concepten'])[ctx.BV.f.sleutel].f.modus === 'traject', 'begeleider: concept alleen op dit apparaat (geen crm-concept)');
+ok(posts.filter((p) => p.url.indexOf('/bezoek/concept') >= 0).length === voorConcept && JSON.parse(opslag[ctx.BV.conceptVak])[ctx.BV.f.sleutel].f.modus === 'traject', 'begeleider: concept alleen op dit apparaat (geen crm-concept)');
 antwoorden.push({ status: 200, json: { ok: true, nieuw: true, acties: [{ titel: 'Informatie opvragen' }] } });
 ctx.bvOpslaan(); await wacht(); await wacht();
+const dossierVak = await ctx.bvConceptVak({ opts: { modus: 'traject', sleutel: 'TUSSEN-SYNTH' } }, { traject: { id: 'SYNTA1' } });
+const anderDossierVak = await ctx.bvConceptVak({ opts: { modus: 'traject', sleutel: 'TUSSEN-SYNTH' } }, { traject: { id: 'SYNTA2' } });
+const andereSessieVak = await ctx.bvConceptVak({ opts: { modus: 'traject', sleutel: 'TUSSEN-ANDERS' } }, { traject: { id: 'SYNTA1' } });
+ok(dossierVak !== anderDossierVak && dossierVak !== andereSessieVak && !JSON.stringify(opslag).includes('TUSSEN-SYNTH'), 'dossiervak gebonden aan dossier en begeleiderssessie zonder sleutel in opslag');
 const tsave = posts.filter((p) => p.url.endsWith('/mna/bezoek/opslaan/SYNTA1')).pop();
 ok(tsave && tsave.opts.headers['x-tussen-key'] === 'TUSSEN-SYNTH' && ctx.BV === null && ctx.toasts.indexOf('Het verslag staat in het gesprekslogboek van dit mandaat.') >= 0, 'begeleider: opgeslagen via de mandaatroute, melding gesprekslogboek');
 antwoorden = [{ status: 200, json: { ok: true, modus: 'traject', traject: { id: 'SYNTA1', naam: 'x' }, lijsten, eigenaren: [], afgesloten: true } }];
