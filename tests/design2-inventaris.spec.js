@@ -15,7 +15,8 @@ const UIT = process.env.KVM_R0_UIT || path.join(ROOT, 'tests', 'rapporten', 'des
 fs.mkdirSync(UIT, { recursive: true });
 const VOK = (fs.readFileSync(path.join(ROOT, 'mna', '04-begeleider-dashboard.js'), 'utf8').match(/VOK_VERSIE\s*=\s*'([^']+)'/) || [])[1];
 const DOM = '@e2e-test.koersvoormorgen.invalid', TS = Date.now();
-let V, K, T;
+// N-120 batch F: VID = traject-ID (opruimen/D1), V = verkoper-inlogcode (legacy = traject-ID).
+let VID, V, K, T;
 
 async function inventaris(page) {
   return page.evaluate(() => Array.from(document.querySelectorAll('#app button, #app a, #app input, #app select, #app textarea, #mt-zij [data-mt-naar]'))
@@ -76,7 +77,7 @@ test.describe('Design 2.0 R0 — inventaris uit/aan', () => {
   test.beforeAll(async () => {
     const c = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'DESIGN2-R0-' + TS + ' Synth BV', contact_naam: 'Synth Verkoper', contact_email: 'v' + TS + DOM, sector: 'accountancy', traject_type: 'Verkoop' } });
     if (!c.json || !c.json.code) throw new Error('traject aanmaken mislukt HTTP ' + c.status);
-    V = c.json.code; K = c.json.koper_code; T = c.json.tussen_code;
+    VID = c.json.code; V = c.json.verkoper_inlogcode || c.json.code; K = c.json.koper_code; T = c.json.tussen_code;
     await accepteerPlatformvoorwaarden({ verkoper: V, koper: K, begeleider: T });
     const vok = await api('POST', '/mna/vok/teken', { body: { code: T, naam: 'Synth Begeleider', versie: VOK, email: 'b' + TS + DOM } });
     if (vok.status !== 200) throw new Error('VOK mislukt');
@@ -85,7 +86,7 @@ test.describe('Design 2.0 R0 — inventaris uit/aan', () => {
     for (const [i, n] of ['Synth Rivieroever Accountancy', 'Synth Polder Administratie'].entries()) await api('POST', '/mna/kandidaten/toevoegen', { headers: { 'x-tussen-key': T }, body: { code: T, naam: n, plaats: ['Arnhem', 'Lelystad'][i], omvang: ['18 fte', '11 fte'][i], contact_naam: 'Synth Contact', email: 'k' + i + TS + DOM, criteria: { werkgebied: 80 - i * 10 }, idem: 'd2r0' + i + TS } });
   });
   test.afterAll(async () => {
-    if (V) { const r = await ruimTrajectOp(V, ADMIN); expect(r && r.ok, 'testtraject opgeruimd').toBe(true); }
+    if (V) { const r = await ruimTrajectOp(VID, ADMIN); expect(r && r.ok, 'testtraject opgeruimd').toBe(true); }
   });
 
   for (const rol of ['begeleider', 'verkoper', 'koper']) {

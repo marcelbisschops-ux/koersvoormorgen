@@ -10,7 +10,9 @@ const ADMIN = leesAdminKey();
 let T;
 test.beforeAll(async () => {
   T = (await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth N160 Advies B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'v@synth.invalid' } })).json;
-  await accepteerPlatformvoorwaarden([T.code, T.tussen_code, T.koper_code]);
+  // N-120 batch F: T.v = verkoper-inlogcode (legacy = traject-ID); T.code blijft het traject-ID (opruimen/D1/openTraject).
+  if (T) T.v = T.verkoper_inlogcode || T.code;
+  await accepteerPlatformvoorwaarden([T.v, T.tussen_code, T.koper_code]);
   const src = fs.readFileSync(new URL('../mna/04-begeleider-dashboard.js', import.meta.url), 'utf8');
   const versie = (src.match(/VOK_VERSIE\s*=\s*'([^']+)'/) || [])[1] || '1.5';
   await api('POST', '/mna/vok/teken', { body: { code: T.tussen_code, naam: 'Synth Begeleider', versie, email: 'b@synth.invalid' } });

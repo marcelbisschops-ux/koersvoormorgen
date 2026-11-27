@@ -12,8 +12,8 @@ test.describe('KVM-009 kopersbanner', () => {
   test.skip(!IS_STAGING_WORKER || !ADMIN, 'alleen tegen staging met beheersleutel');
   test.beforeAll(async () => {
     const c = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth KB ' + Date.now() + ' B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'kb@kvm-test.invalid', koper_naam: 'Synth Koper KB' } });
-    T = { V: c.json.code, K: c.json.koper_code, B: c.json.tussen_code };
-    await accepteerPlatformvoorwaarden([T.V, T.K, T.B]);
+    T = { V: c.json.code, VL: c.json.verkoper_inlogcode || c.json.code, K: c.json.koper_code, B: c.json.tussen_code }; // N-120 batch F: V = traject-ID, VL = verkoper-inlogcode
+    await accepteerPlatformvoorwaarden([T.VL, T.K, T.B]);
   });
   test.afterAll(async () => { if (T) await ruimTrajectOp(T.V, ADMIN); });
 

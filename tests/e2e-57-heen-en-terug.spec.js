@@ -19,7 +19,9 @@ test.beforeAll(async () => {
   zetMfaUitVoorTest(email);
   await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 2, modules: { traject: true } } });
   T = (await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'Synth 57 B.V.', contact_naam: 'Synth V', contact_email: 'v@bisschopsfinancing.test', traject_type: 'Verkoop', sector: 'accountancy' } } })).json;
-  await accepteerPlatformvoorwaarden([T.code, T.tussen_code, T.koper_code]);
+  // N-120 batch F: T.v = verkoper-inlogcode (legacy = traject-ID); T.code blijft het traject-ID (opruimen/D1/openTraject).
+  if (T) T.v = T.verkoper_inlogcode || T.code;
+  await accepteerPlatformvoorwaarden([T.v, T.tussen_code, T.koper_code]);
   const src = fs.readFileSync(new URL('../mna/04-begeleider-dashboard.js', import.meta.url), 'utf8');
   const versie = (src.match(/VOK_VERSIE\s*=\s*'([^']+)'/) || [])[1] || '1.5';
   await api('POST', '/mna/vok/teken', { body: { code: T.tussen_code, naam: 'Synth Begeleider', versie, email: 'b@bisschopsfinancing.test' } });

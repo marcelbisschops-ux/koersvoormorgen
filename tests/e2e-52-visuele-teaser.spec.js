@@ -11,12 +11,13 @@ const ADMIN = leesAdminKey();
 const VOK_VERSIE = (() => { try { const m = fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'mna', '04-begeleider-dashboard.js'), 'utf8').match(/VOK_VERSIE\s*=\s*'([^']+)'/); return (m && m[1]) || '1.5'; } catch { return '1.5'; } })();
 const veld = (value, label) => ({ value, label });
 const SCHOON = 'Een gevestigd IT- en softwarebedrijf in Midden-Nederland met een omzet in de klasse €1 - €2 miljoen en een hecht team. De onderneming levert maatwerk en beheer aan een brede, trouwe klantenkring met veel terugkerende omzet. De eigenaar zoekt een opvolger die de groei voortzet.';
-let V, T;
+// N-120 batch F: VID = traject-ID (opruimen/D1), V = verkoper-inlogcode (legacy = traject-ID).
+let VID, V, T;
 
 test.beforeAll(async () => {
   test.setTimeout(120000);
   const c = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth Teaser Vos B.V.', sector: 'itsoftware', traject_type: 'Verkoop', contact_email: 'e2e-52@kvm-test.invalid' } });
-  V = c.json && c.json.code; T = c.json && c.json.tussen_code;
+  VID = c.json && c.json.code; V = c.json && (c.json.verkoper_inlogcode || c.json.code); T = c.json && c.json.tussen_code;
   await accepteerPlatformvoorwaarden([V, T]);
   await api('POST', '/mna/vok/teken', { body: { code: T, naam: 'Synth Begeleider', versie: VOK_VERSIE, email: 'e2e-52@kvm-test.invalid' } });
   const fasen = {
@@ -29,7 +30,7 @@ test.beforeAll(async () => {
   const o = await api('POST', '/mna/teaser/opslaan', { headers: { 'x-tussen-key': T }, body: { code: T, tekst: SCHOON } });
   expect(o.json && o.json.ok, 'teasertekst opgeslagen (geen AI)').toBeTruthy();
 });
-test.afterAll(async () => { if (V) await ruimTrajectOp(V, ADMIN); });
+test.afterAll(async () => { if (V) await ruimTrajectOp(VID, ADMIN); });
 
 test('API: voorbeeld met grafieken, controle en verzendpoort', async () => {
   const B = { 'x-tussen-key': T };

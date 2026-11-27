@@ -21,7 +21,9 @@ test.beforeAll(async () => {
   await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 2, modules: { traject: true } } });
   const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'Synth N184 Notitie B.V.', contact_naam: 'Synth Verkoper', contact_email: 'v@bisschopsfinancing.test', traject_type: 'Verkoop', sector: 'accountancy', notitie: 'BEHEERDERSNOTITIE-NIET-TONEN' } } });
   T = c.json;
-  await accepteerPlatformvoorwaarden([T.code, T.tussen_code, T.koper_code]);
+  // N-120 batch F: T.v = verkoper-inlogcode (legacy = traject-ID); T.code blijft het traject-ID (opruimen/D1/openTraject).
+  if (T) T.v = T.verkoper_inlogcode || T.code;
+  await accepteerPlatformvoorwaarden([T.v, T.tussen_code, T.koper_code]);
   // Bestaande voorgesprekrij met een ander veld, een checklist en een notitie (zoals de begeleider die vult in mna.html).
   await api('POST', '/mna/save', { body: { code: T.tussen_code, fase_id: 'voorgesprek', data_json: { motief: { label: 'Motief', value: 'Opvolging' } }, checklist_json: { item1: true }, notitie: 'Begeleidernotitie voorgesprek' } });
   // De beheerdersnotitie staat in mna_trajecten.notitie (platformbeheerder-only).

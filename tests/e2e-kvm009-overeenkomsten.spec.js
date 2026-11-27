@@ -19,8 +19,8 @@ test.describe('KVM-009 Mijn overeenkomsten', () => {
   test.skip(!IS_STAGING_WORKER || !ADMIN, 'alleen tegen staging met beheersleutel');
   test.beforeAll(async () => {
     const c = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth MO ' + Date.now() + ' B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'mo@kvm-test.invalid', koper_naam: 'Synth Koper MO' } });
-    T = { V: c.json.code, K: c.json.koper_code, B: c.json.tussen_code };
-    await accepteerPlatformvoorwaarden([T.V, T.K, T.B]);
+    T = { V: c.json.code, VL: c.json.verkoper_inlogcode || c.json.code, K: c.json.koper_code, B: c.json.tussen_code }; // N-120 batch F: V = traject-ID, VL = verkoper-inlogcode
+    await accepteerPlatformvoorwaarden([T.VL, T.K, T.B]);
     d1('UPDATE mna_trajecten SET koper_vrijgegeven=1 WHERE id=' + q(T.V)); // staging-testopzet
   });
   test.afterAll(async () => {
@@ -68,7 +68,7 @@ test.describe('KVM-009 Mijn overeenkomsten', () => {
 
   test('verkoper krijgt het blok niet', async ({ page }) => {
     d1('UPDATE mna_trajecten SET opening_voltooid=1 WHERE id=' + q(T.V)); // staging-testopzet: openingsscherm al doorlopen
-    await login(page, T.V, 'verkoper');
+    await login(page, T.VL, 'verkoper');
     await expect(page.locator('#koper-overeenkomsten')).toHaveCount(0);
   });
 });

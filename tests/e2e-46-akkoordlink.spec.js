@@ -9,22 +9,23 @@ import { api, leesAdminKey, WORKER, IS_STAGING_WORKER, accepteerPlatformvoorwaar
 test.skip(!IS_STAGING_WORKER, 'alleen staging');
 const ADMIN = leesAdminKey();
 const VOK_VERSIE = (() => { try { const m = fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'mna', '04-begeleider-dashboard.js'), 'utf8').match(/VOK_VERSIE\s*=\s*'([^']+)'/); return (m && m[1]) || '1.5'; } catch { return '1.5'; } })();
-let V, T, DOC;
+// N-120 batch F: VID = traject-ID (opruimen/D1), V = verkoper-inlogcode (legacy = traject-ID).
+let VID, V, T, DOC;
 
 test.beforeAll(async () => {
   test.setTimeout(120000);
   const c = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth Akkoordlink B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'delivered@resend.dev' } });
-  V = c.json && c.json.code; T = c.json && c.json.tussen_code;
+  VID = c.json && c.json.code; V = c.json && (c.json.verkoper_inlogcode || c.json.code); T = c.json && c.json.tussen_code;
   await accepteerPlatformvoorwaarden([V, T]);
   await api('POST', '/mna/vok/teken', { body: { code: T, naam: 'Synth Begeleider', versie: VOK_VERSIE, email: 'delivered@resend.dev' } });
   DOC = 'SYNTHAKL' + Date.now();
   const nu = Date.now();
   if (!/^[A-Z0-9]+$/.test(V) || !/^SYNTHAKL\d+$/.test(DOC)) throw new Error('onverwachte code');
-  d1("INSERT INTO tos_document (id, traject_id, profile_id, profile_version, doc_type, status, current_version, created_by, created_at, updated_at, adressaten_json, verstuurd_op) VALUES ('" + DOC + "','" + V + "','synth',1,'nda','verstuurd',1,'begeleider'," + nu + ',' + nu + ",'[\"koper\"]'," + nu + ')');
+  d1("INSERT INTO tos_document (id, traject_id, profile_id, profile_version, doc_type, status, current_version, created_by, created_at, updated_at, adressaten_json, verstuurd_op) VALUES ('" + DOC + "','" + VID + "','synth',1,'nda','verstuurd',1,'begeleider'," + nu + ',' + nu + ",'[\"koper\"]'," + nu + ')');
 });
 test.afterAll(async () => {
   if (DOC && /^SYNTHAKL\d+$/.test(DOC)) { d1("DELETE FROM tos_party_response WHERE document_id='" + DOC + "'"); d1("DELETE FROM tos_document WHERE id='" + DOC + "'"); }
-  if (V) await ruimTrajectOp(V, ADMIN);
+  if (V) await ruimTrajectOp(VID, ADMIN);
 });
 
 test('akkoordlink: begeleider maakt link, ontvanger geeft akkoord zonder in te loggen, eenmalig', async ({ page, browser }) => {

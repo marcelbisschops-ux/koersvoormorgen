@@ -9,7 +9,9 @@ const ADMIN = leesAdminKey();
 let T;
 test.beforeAll(async () => {
   T = (await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth Dash KPI B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'v@synth.invalid' } })).json;
-  await accepteerPlatformvoorwaarden([T.code, T.tussen_code, T.koper_code]);
+  // N-120 batch F: T.v = verkoper-inlogcode (legacy = traject-ID); T.code blijft het traject-ID (opruimen/D1/openTraject).
+  if (T) T.v = T.verkoper_inlogcode || T.code;
+  await accepteerPlatformvoorwaarden([T.v, T.tussen_code, T.koper_code]);
   const src = fs.readFileSync(new URL('../mna/04-begeleider-dashboard.js', import.meta.url), 'utf8');
   const versie = (src.match(/VOK_VERSIE\s*=\s*'([^']+)'/) || [])[1] || '1.5';
   await api('POST', '/mna/vok/teken', { body: { code: T.tussen_code, naam: 'Synth Begeleider', versie, email: 'b@synth.invalid' } });
@@ -45,7 +47,7 @@ test('alleen goedgekeurde waardering, indicatief, verouderd na financiële wijzi
   await expect(kpi(p)).toContainText('peildatum');
   await expect(kpi(p)).not.toContainText('verouderd');
 
-  await api('POST', '/mna/save', { body: { code: T.code, fase_id: 'financieel', data_json: { omzet3: { value: '2000000', label: 'x' } }, basis: {} } });
+  await api('POST', '/mna/save', { body: { code: T.v, fase_id: 'financieel', data_json: { omzet3: { value: '2000000', label: 'x' } }, basis: {} } });
   await new Promise((r) => setTimeout(r, 1500));
   await ververs(p);
   await expect(kpi(p)).toContainText('verouderd sinds', { timeout: 15000 });
@@ -54,7 +56,7 @@ test('alleen goedgekeurde waardering, indicatief, verouderd na financiële wijzi
   // Verkoper ziet de KPI niet (bron is begeleider-only).
   const v = await (await browser.newContext()).newPage();
   await v.goto('/mna.html?worker=' + encodeURIComponent(WORKER));
-  await v.locator('#l-code').fill(T.code);
+  await v.locator('#l-code').fill(T.v);
   await v.locator('#l-btn').click();
   await v.waitForFunction(() => window.S && S.rol, null, { timeout: 20000 });
   await v.waitForTimeout(3000);

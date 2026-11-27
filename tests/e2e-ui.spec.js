@@ -427,7 +427,7 @@ test.describe('Rekenkern dealvoorstel', () => {
 test.describe('Rol Click-Through: documentcontent-race (regressie 12 sep 2026)', () => {
   test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — race-test overgeslagen');
 
-  let email, gid, verkoperCode, tussenCode;
+  let email, gid, verkoperCode, vTrajectId, tussenCode;
 
   test.beforeAll(async () => {
     email = 'e2e-ui-mourace-' + Date.now() + '@bisschopsfinancing.test';
@@ -437,14 +437,14 @@ test.describe('Rol Click-Through: documentcontent-race (regressie 12 sep 2026)',
     await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
     await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E MouRace Kantoor BV', traject_type: 'Verkoop' } } });
-    verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
+    vTrajectId = c.json.code; verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
     tussenCode = c.json.tussen_code;
     await accepteerPlatformvoorwaarden({ verkoper: verkoperCode, tussenpersoon: tussenCode });
     await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
   });
 
   test.afterAll(async () => {
-    if (verkoperCode) await ruimTestTrajectOp(verkoperCode, tussenCode); // N-104: extern testtraject → staging-only opruimroute
+    if (vTrajectId) await ruimTestTrajectOp(vTrajectId, tussenCode); // N-104: extern testtraject → staging-only opruimroute
     if (gid) await verwijderTestGebruiker(gid, ADMIN);
   });
 
@@ -498,7 +498,7 @@ test.describe('Login — foutpad', () => {
 test.describe('Login en rollen (eigen testtraject)', () => {
   test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — rollen-test overgeslagen');
 
-  let email, gid, verkoperCode, tussenCode;
+  let email, gid, verkoperCode, vTrajectId, tussenCode;
 
   test.beforeAll(async () => {
     email = 'e2e-ui-rollen-' + Date.now() + '@bisschopsfinancing.test';
@@ -509,7 +509,7 @@ test.describe('Login en rollen (eigen testtraject)', () => {
     // Limiet 1, alle modules aan (dit is de rollen-test, geen gating-test)
     await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E Rollen Kantoor BV', traject_type: 'Verkoop' } } });
-    verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
+    vTrajectId = c.json.code; verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
     tussenCode = c.json.tussen_code;
     await accepteerPlatformvoorwaarden({ verkoper: verkoperCode, tussenpersoon: tussenCode });
     // Verwerkersovereenkomst vooraf tekenen, anders blokkeert de VOK-popup het dashboard.
@@ -517,7 +517,7 @@ test.describe('Login en rollen (eigen testtraject)', () => {
   });
 
   test.afterAll(async () => {
-    if (verkoperCode) await ruimTestTrajectOp(verkoperCode, tussenCode); // N-104: extern testtraject → staging-only opruimroute
+    if (vTrajectId) await ruimTestTrajectOp(vTrajectId, tussenCode); // N-104: extern testtraject → staging-only opruimroute
     if (gid) await verwijderTestGebruiker(gid, ADMIN);
   });
 
@@ -777,7 +777,7 @@ test.describe('Rol Click-Through: eigen specialist', () => {
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E EigenSpec Kantoor BV', traject_type: 'Verkoop' } } });
     trajectCode = c.json.code;
     tussenCode = c.json.tussen_code;
-    await accepteerPlatformvoorwaarden({ verkoper: trajectCode, tussenpersoon: tussenCode });
+    await accepteerPlatformvoorwaarden({ verkoper: c.json.verkoper_inlogcode || trajectCode, tussenpersoon: tussenCode }); // N-120 batch F
     await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
   });
 
@@ -837,7 +837,7 @@ test.describe('Documentknoppen module-gating', () => {
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E UI Gating Kantoor BV', traject_type: 'Verkoop' } } });
     trajectCode = c.json.code;
     tussenCode = c.json.tussen_code;
-    await accepteerPlatformvoorwaarden({ verkoper: trajectCode, tussenpersoon: tussenCode });
+    await accepteerPlatformvoorwaarden({ verkoper: c.json.verkoper_inlogcode || trajectCode, tussenpersoon: tussenCode }); // N-120 batch F
     // Verwerkersovereenkomst vooraf tekenen, anders blokkeert de VOK-popup het dashboard.
     // LET OP: versie moet gelijk zijn aan VOK_VERSIE in mna/04-begeleider-dashboard.js — anders
     // wordt de popup (terecht) opnieuw getoond en faalt deze test.
@@ -876,7 +876,7 @@ test.describe('Documentknoppen module-gating', () => {
 test.describe('Cross-entiteit databeveiliging (regressie 18 aug 2026)', () => {
   test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — cross-entiteit-test overgeslagen');
 
-  let email, gid, verkoperCode, tussenCode, noordId, zuidId;
+  let email, gid, verkoperCode, vTrajectId, tussenCode, noordId, zuidId;
 
   test.beforeAll(async () => {
     email = 'e2e-ui-crossentiteit-' + Date.now() + '@bisschopsfinancing.test';
@@ -886,7 +886,7 @@ test.describe('Cross-entiteit databeveiliging (regressie 18 aug 2026)', () => {
     await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
     await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E CrossEntiteit Kantoor BV', traject_type: 'Verkoop' } } });
-    verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
+    vTrajectId = c.json.code; verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
     tussenCode = c.json.tussen_code;
     await accepteerPlatformvoorwaarden({ verkoper: verkoperCode, tussenpersoon: tussenCode });
     await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
@@ -905,7 +905,7 @@ test.describe('Cross-entiteit databeveiliging (regressie 18 aug 2026)', () => {
   });
 
   test.afterAll(async () => {
-    if (verkoperCode) await ruimTestTrajectOp(verkoperCode, tussenCode); // N-104: extern testtraject → staging-only opruimroute
+    if (vTrajectId) await ruimTestTrajectOp(vTrajectId, tussenCode); // N-104: extern testtraject → staging-only opruimroute
     if (gid) await verwijderTestGebruiker(gid, ADMIN);
   });
 
@@ -979,7 +979,7 @@ test.describe('Cross-entiteit databeveiliging (regressie 18 aug 2026)', () => {
 test.describe('Gelijktijdige multi-upload', () => {
   test.skip(!ADMIN, 'Geen admin-key (ADMIN_KEY / --key=) — multi-upload-test overgeslagen');
 
-  let email, gid, verkoperCode, tussenCode, tmpDir;
+  let email, gid, verkoperCode, vTrajectId, tussenCode, tmpDir;
 
   test.beforeAll(async () => {
     email = 'e2e-ui-multiupload-' + Date.now() + '@bisschopsfinancing.test';
@@ -989,7 +989,7 @@ test.describe('Gelijktijdige multi-upload', () => {
     await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
     await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E MultiUpload Kantoor BV', traject_type: 'Verkoop' } } });
-    verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
+    vTrajectId = c.json.code; verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
     tussenCode = c.json.tussen_code;
     await accepteerPlatformvoorwaarden({ verkoper: verkoperCode, tussenpersoon: tussenCode });
     await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
@@ -1002,7 +1002,7 @@ test.describe('Gelijktijdige multi-upload', () => {
   });
 
   test.afterAll(async () => {
-    if (verkoperCode) await ruimTestTrajectOp(verkoperCode, tussenCode); // N-104: extern testtraject → staging-only opruimroute
+    if (vTrajectId) await ruimTestTrajectOp(vTrajectId, tussenCode); // N-104: extern testtraject → staging-only opruimroute
     if (gid) await verwijderTestGebruiker(gid, ADMIN);
     if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
   });

@@ -14,14 +14,16 @@ const d1Rij = (sql) => { const r = d1(sql); return Array.isArray(r) ? r[0] : (r 
 const veld = (x) => ({ value: x, label: 'x' });
 test.beforeAll(async () => {
   T = (await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth N183 Paneel B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'v@synth.invalid' } })).json;
-  await accepteerPlatformvoorwaarden([T.code, T.tussen_code, T.koper_code]);
+  // N-120 batch F: T.v = verkoper-inlogcode (legacy = traject-ID); T.code blijft het traject-ID (opruimen/D1/openTraject).
+  if (T) T.v = T.verkoper_inlogcode || T.code;
+  await accepteerPlatformvoorwaarden([T.v, T.tussen_code, T.koper_code]);
   const src = fs.readFileSync(new URL('../mna/04-begeleider-dashboard.js', import.meta.url), 'utf8');
   const versie = (src.match(/VOK_VERSIE\s*=\s*'([^']+)'/) || [])[1] || '1.5';
   await api('POST', '/mna/vok/teken', { body: { code: T.tussen_code, naam: 'Synth Begeleider', versie, email: 'b@synth.invalid' } });
-  await api('POST', '/mna/save', { body: { code: T.code, fase_id: 'financieel', data_json: { omzet1: veld('1800000'), omzet2: veld('1900000'), omzet3: veld('2000000'), ebitda: veld('400000'), kostenPersoneel: veld('55') }, basis: {} } });
-  await api('POST', '/mna/save', { body: { code: T.code, fase_id: 'partner', data_json: { fte: veld('16') }, basis: {} } });
-  await api('POST', '/mna/save', { body: { code: T.code, fase_id: 'commercieel', data_json: { pctCompliance: veld('60'), pctAdviesTerugkerend: veld('25'), pctAdviesIncidenteel: veld('10'), dienstmixBron: veld('schatting') }, basis: {} } });
-  await api('POST', '/mna/save', { body: { code: T.code, fase_id: 'it', data_json: { pctHandmatig: veld('30'), stdWerkprogramma: veld('Ja'), stdSjablonen: veld('Ja'), stdBankkoppeling: veld('Deels'), aiToestemming: veld('onbekend') }, basis: {} } });
+  await api('POST', '/mna/save', { body: { code: T.v, fase_id: 'financieel', data_json: { omzet1: veld('1800000'), omzet2: veld('1900000'), omzet3: veld('2000000'), ebitda: veld('400000'), kostenPersoneel: veld('55') }, basis: {} } });
+  await api('POST', '/mna/save', { body: { code: T.v, fase_id: 'partner', data_json: { fte: veld('16') }, basis: {} } });
+  await api('POST', '/mna/save', { body: { code: T.v, fase_id: 'commercieel', data_json: { pctCompliance: veld('60'), pctAdviesTerugkerend: veld('25'), pctAdviesIncidenteel: veld('10'), dienstmixBron: veld('schatting') }, basis: {} } });
+  await api('POST', '/mna/save', { body: { code: T.v, fase_id: 'it', data_json: { pctHandmatig: veld('30'), stdWerkprogramma: veld('Ja'), stdSjablonen: veld('Ja'), stdBankkoppeling: veld('Deels'), aiToestemming: veld('onbekend') }, basis: {} } });
 });
 test.afterAll(async () => { if (T) { const r = await ruimTrajectOp(T.code, ADMIN); expect(r && r.ok).toBeTruthy(); } });
 
@@ -61,14 +63,14 @@ test('vragen in het profiel, paneel voor de begeleider, beoordeling vastleggen',
   const itRijD1 = d1Rij("SELECT data_json FROM mna_data WHERE id='" + T.code + "_it'");
   const itNu = JSON.parse(itRijD1.data_json);
   const bas = Object.fromEntries(Object.entries(itNu).filter(([, x]) => x && x.value).map(([k, x]) => [k, String(x.value)]));
-  await api('POST', '/mna/save', { body: { code: T.code, fase_id: 'it', data_json: { ...itNu, pctHandmatig: veld('12') }, basis: bas } });
+  await api('POST', '/mna/save', { body: { code: T.v, fase_id: 'it', data_json: { ...itNu, pctHandmatig: veld('12') }, basis: bas } });
   await page.evaluate(() => tkLaad());
   await expect(page.locator('#tk-verouderd')).toBeVisible({ timeout: 10000 });
   expect(fouten).toEqual([]);
   // De verkoper ziet het paneel niet.
   const v = await (await browser.newContext()).newPage();
   await v.goto('/mna.html?worker=' + encodeURIComponent(WORKER));
-  await v.locator('#l-code').fill(T.code);
+  await v.locator('#l-code').fill(T.v);
   await v.locator('#l-btn').click();
   await v.waitForFunction(() => window.S && S.rol, null, { timeout: 20000 });
   await v.evaluate(() => { if (typeof tkLaad === 'function') tkLaad(); });

@@ -10,15 +10,16 @@ import { api, leesAdminKey, WORKER, d1, IS_STAGING_WORKER, accepteerPlatformvoor
 test.skip(!IS_STAGING_WORKER, 'alleen staging');
 const ADMIN = leesAdminKey();
 const VOK = (() => { try { return (fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'mna', '04-begeleider-dashboard.js'), 'utf8').match(/VOK_VERSIE\s*=\s*'([^']+)'/) || [])[1] || '1.5'; } catch { return '1.5'; } })();
-let V, T;
+// N-120 batch F: VID = traject-ID (opruimen/D1), V = verkoper-inlogcode (legacy = traject-ID).
+let VID, V, T;
 test.beforeAll(async () => {
   const c = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth Disclaimer 62 B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'e2e-62@kvm-test.invalid' } });
-  V = c.json.code; T = c.json.tussen_code;
+  VID = c.json.code; V = c.json.verkoper_inlogcode || c.json.code; T = c.json.tussen_code;
   await accepteerPlatformvoorwaarden([V, T]);
   await api('POST', '/mna/vok/teken', { body: { code: T, naam: 'Synth Begeleider', versie: VOK, email: 'e2e-62@kvm-test.invalid' } });
   await api('POST', '/mna/teaser/opslaan', { headers: { 'x-tussen-key': T }, body: { code: T, tekst: 'Een synthetische teasertekst voor de disclaimerproef.' } });
 });
-test.afterAll(async () => { if (V) await ruimTrajectOp(V, ADMIN); });
+test.afterAll(async () => { if (V) await ruimTrajectOp(VID, ADMIN); });
 
 test('#62: kennisname-popup vóór printen, naam verplicht, vastlegging per actie', async ({ page }) => {
   test.setTimeout(90000);
@@ -48,7 +49,7 @@ test('#62: kennisname-popup vóór printen, naam verplicht, vastlegging per acti
   await audit2;
   await expect(page.locator('#reliance-ok')).toHaveCount(0); // eenmalig per sessie, maar wel opnieuw gelogd
   await page.waitForTimeout(800);
-  const rijen = d1("SELECT actie, extra FROM mna_audit WHERE code IN ('" + V + "','" + T + "') AND actie='reliance_bevestiging' ORDER BY id");
+  const rijen = d1("SELECT actie, extra FROM mna_audit WHERE code IN ('" + VID + "','" + V + "','" + T + "') AND actie='reliance_bevestiging' ORDER BY id");
   expect(rijen.length, 'twee vastleggingen (eerste kennisname + herhaling)').toBe(2);
   expect(JSON.parse(rijen[0].extra).bevestigd_door).toBe('Synth Begeleider');
   expect(JSON.parse(rijen[1].extra).herhaling).toBe(true);

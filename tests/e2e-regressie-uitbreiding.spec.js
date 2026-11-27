@@ -79,7 +79,8 @@ async function maakTraject(extra) {
   // tekenbevoegde + entiteiten/partners) — geen van deze 9 tests gaat over die flow zelf, dus die
   // overslaan via een directe D1-zet (zelfde bewuste testopzet-patroon als elders in dit bestand).
   d1("UPDATE mna_trajecten SET opening_voltooid=1 WHERE id='" + c.json.code + "'");
-  return { gid, email, code: c.json.code, koperCode: c.json.koper_code, tussenCode: c.json.tussen_code };
+  // N-120 batch F: code = traject-ID (D1/opruimen), v = verkoper-inlogcode (legacy = traject-ID).
+  return { gid, email, code: c.json.code, v: c.json.verkoper_inlogcode || c.json.code, koperCode: c.json.koper_code, tussenCode: c.json.tussen_code };
 }
 
 async function ruimGebruikerEnTrajectOp(t) {
@@ -115,7 +116,7 @@ test('1. Verkoper tekent NDA via cover-scherm — status + D1 geverifieerd', asy
     const rijVoor = d1("SELECT nda_tekst FROM mna_trajecten WHERE id='" + t.code + "'");
     expect(rijVoor[0] && rijVoor[0].nda_tekst, 'testopzet: nda_tekst staat op de rij').toBeTruthy();
 
-    await loginMna(page, t.code);
+    await loginMna(page, t.v);
     await page.waitForSelector('#nda-teken-btn', { timeout: 10000 });
 
     // Eén persistente handler (i.p.v. .once) vóór de klik: prompt() en confirm() volgen elkaar
@@ -171,12 +172,12 @@ test('2. Verkoper: fase afronden en dossier vrijgeven aan begeleider (volledige 
       if (payload.omzet3) payload.omzet3.value = '3500000';
       if (payload.ebitda) payload.ebitda.value = '525000';
       if (Object.keys(payload).length) {
-        const s = await api('POST', '/mna/save', { body: { code: t.code, fase_id: fase.id, data_json: payload } });
+        const s = await api('POST', '/mna/save', { body: { code: t.v, fase_id: fase.id, data_json: payload } });
         expect(s.json && s.json.ok, 'save fase ' + fase.id + ' (verplichte velden)').toBe(true);
       }
     }
 
-    await loginMna(page, t.code);
+    await loginMna(page, t.v);
     await page.waitForFunction(() => window.S && S.traject, null, { timeout: 10000 });
     await page.evaluate(() => { S.screen = 'main'; S.fase = 0; renderApp(); });
     await page.waitForSelector('#fase-afronden-btn', { timeout: 10000 });
@@ -292,7 +293,7 @@ async function maakEigenWisTraject(label) {
     contact_email: 'wis-' + label.toLowerCase() + '-' + Date.now() + '@bisschopsfinancing.test', opdrachtgever_rol: 'verkoper',
   } });
   if (!r.json || !r.json.ok || !r.json.code) throw new Error('eigen wistraject (' + label + ') aanmaken mislukt: ' + JSON.stringify(r.json));
-  return { code: r.json.code, koperCode: r.json.koper_code, tussenCode: r.json.tussen_code };
+  return { code: r.json.code, v: r.json.verkoper_inlogcode || r.json.code, koperCode: r.json.koper_code, tussenCode: r.json.tussen_code };
 }
 
 // Onafhankelijke D1-momentopname van alles wat wis-data (zonder documenten/ondertekeningen) NIET
@@ -326,23 +327,23 @@ test('4. Marilyn: wisTrajectData wist exact de gekozen data, niets meer en niets
     intern = await maakEigenWisTraject('Intern');
     controle = await maakEigenWisTraject('Controle');
     for (const t of [intern, controle]) {
-      await accepteerPlatformvoorwaarden({ verkoper: t.code, koper: t.koperCode, tussenpersoon: t.tussenCode });
+      await accepteerPlatformvoorwaarden({ verkoper: t.v, koper: t.koperCode, tussenpersoon: t.tussenCode });
       d1("UPDATE mna_trajecten SET opening_voltooid=1 WHERE id='" + t.code + "'"); // zelfde testopzet als maakTraject()
     }
     extern = await maakTraject();
 
-    const saveIntern = await api('POST', '/mna/save', { body: { code: intern.code, fase_id: 'commercieel', data_json: { klantenportefeuille: { label: 'Klantenportefeuille', value: internMarker } }, checklist_json: { items: { 0: true }, redflags: {} } } });
+    const saveIntern = await api('POST', '/mna/save', { body: { code: intern.v, fase_id: 'commercieel', data_json: { klantenportefeuille: { label: 'Klantenportefeuille', value: internMarker } }, checklist_json: { items: { 0: true }, redflags: {} } } });
     expect(saveIntern.json && saveIntern.json.ok, 'intern: testdata vooraf opgeslagen (DD-veld + checklist)').toBe(true);
-    const saveControle = await api('POST', '/mna/save', { body: { code: controle.code, fase_id: 'commercieel', data_json: { klantenportefeuille: { label: 'Klantenportefeuille', value: controleMarker } }, checklist_json: { items: { 0: true }, redflags: {} } } });
+    const saveControle = await api('POST', '/mna/save', { body: { code: controle.v, fase_id: 'commercieel', data_json: { klantenportefeuille: { label: 'Klantenportefeuille', value: controleMarker } }, checklist_json: { items: { 0: true }, redflags: {} } } });
     expect(saveControle.json && saveControle.json.ok, 'controle: testdata vooraf opgeslagen (DD-veld + checklist)').toBe(true);
-    const saveExtern = await api('POST', '/mna/save', { body: { code: extern.code, fase_id: 'commercieel', data_json: { klantenportefeuille: { label: 'Klantenportefeuille', value: externMarker } } } });
+    const saveExtern = await api('POST', '/mna/save', { body: { code: extern.v, fase_id: 'commercieel', data_json: { klantenportefeuille: { label: 'Klantenportefeuille', value: externMarker } } } });
     expect(saveExtern.json && saveExtern.json.ok, 'extern: synthetische DD-waarde vooraf opgeslagen (verkoper)').toBe(true);
     // Eén synthetisch document op het interne traject, zodat "documenten ongewijzigd" iets bewijst.
     // Zelfde upload-base64-route als test 8 (geen AI-extractie).
     const uploadResp = await fetch(WORKER + '/mna/document/upload-base64', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'data=' + encodeURIComponent(JSON.stringify({ code: intern.code, fase_id: 'commercieel', bestand_naam: 'e2e-wis-behouden.csv', base64: Buffer.from('Kolom\nE2E ' + MARKER + '\n').toString('base64') })),
+      body: 'data=' + encodeURIComponent(JSON.stringify({ code: intern.v, fase_id: 'commercieel', bestand_naam: 'e2e-wis-behouden.csv', base64: Buffer.from('Kolom\nE2E ' + MARKER + '\n').toString('base64') })),
     });
     const upload = await uploadResp.json().catch(() => null);
     expect(upload && upload.ok, 'intern: synthetisch document geüpload (blijft na wissen bestaan)').toBe(true);
@@ -479,7 +480,7 @@ test('5. Sectorprofiel opslaan (Marilyn) → mna.html toont het nieuwe veld dire
     const save = await api('POST', '/mna/admin/sectorprofielen', { adminKey: ADMIN, body: { profielen: { itsoftware: gewijzigdProfiel } } });
     expect(save.json && save.json.ok, 'sectorprofiel opgeslagen via het admin-endpoint (Marilyn Sectoren-tab gebruikt dezelfde route)').toBe(true);
 
-    await loginMna(page, t.code);
+    await loginMna(page, t.v);
     await page.waitForFunction(() => window.S && S.traject, null, { timeout: 10000 });
     await page.evaluate((faseId) => { S.screen = 'main'; S.fase = FASES.findIndex((f) => f.id === faseId); renderApp(); }, gewijzigdProfiel.fases[0].id);
     await expect(page.getByText('E2E-testveld ' + MARKER), 'nieuw sectorprofielveld direct zichtbaar in mna.html, zonder herdeploy').toBeVisible({ timeout: 10000 });
@@ -572,9 +573,9 @@ test('7. Begeleider: consolidatiekeuze bij afwijkend groepscijfer — D1-geverif
     // drempel in consolideerFase() (cloudflare-worker.js). Volgorde is kritiek: consolideerFase()
     // herberekent uitsluitend bij een save MET entiteit_id (worker/11-mna-tekenen-beheer.js) — de
     // groepswaarde moet dus al staan vóórdat de entiteits-save gebeurt.
-    const groepSave = await api('POST', '/mna/save', { body: { code: t.code, fase_id: 'commercieel', data_json: { aantalKlanten: { label: 'Aantal actieve klanten', value: '150' } } } });
+    const groepSave = await api('POST', '/mna/save', { body: { code: t.v, fase_id: 'commercieel', data_json: { aantalKlanten: { label: 'Aantal actieve klanten', value: '150' } } } });
     expect(groepSave.json && groepSave.json.ok, 'groepsniveau (aangeleverd) opgeslagen').toBe(true);
-    const entiteitSave = await api('POST', '/mna/save', { body: { code: t.code, fase_id: 'commercieel', entiteit_id: werkmEntiteit.id, data_json: { aantalKlanten: { label: 'Aantal actieve klanten', value: '100' } } } });
+    const entiteitSave = await api('POST', '/mna/save', { body: { code: t.v, fase_id: 'commercieel', entiteit_id: werkmEntiteit.id, data_json: { aantalKlanten: { label: 'Aantal actieve klanten', value: '100' } } } });
     expect(entiteitSave.json && entiteitSave.json.ok, 'entiteitsniveau-waarde opgeslagen (triggert consolideerFase())').toBe(true);
 
     // VOK vooraf tekenen (zelfde precedent als e2e-3rollen-regressie.spec.js) — anders blokkeert de
@@ -630,7 +631,7 @@ test('8. Verkoper: geüpload document verwijderen — D1-geverifieerd, weg uit d
     const voorRij = d1("SELECT count(*) as n FROM mna_documenten WHERE id='" + docId + "'");
     expect(voorRij[0] && Number(voorRij[0].n), 'D1: document staat er vóór verwijderen').toBe(1);
 
-    await loginMna(page, t.code);
+    await loginMna(page, t.v);
     await page.waitForFunction(() => window.S && S.traject, null, { timeout: 10000 });
     // Bewust een échte klik op de fase-tab i.p.v. S.fase direct te zetten: alleen de klik-handler op
     // de tab (data-fi, mna/06-schermen.js) roept loadDocsForFase() aan — dat gebeurt niet vanuit een

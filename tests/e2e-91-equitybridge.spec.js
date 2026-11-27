@@ -13,14 +13,15 @@ const kb = (f) => ['Rekening;Omschrijving;Debet;Credit', '0100;Inventaris;' + f(
   '1700;Omzetbelasting af te dragen;;' + f(12000), '4000;Salarissen;' + f(300000) + ';', '4100;Huur kantoorpand;' + f(36000) + ';', '4200;Autokosten;' + f(12000) + ';',
   '4300;Kantoorkosten;' + f(18000) + ';', '4800;Afschrijving inventaris;' + f(5000) + ';', '4900;Rentelasten;' + f(2500) + ';', '8000;Omzet advieswerk;;' + f(500000), '9999;Diversen;' + f(100) + ';'].join('\n');
 const nl = (n) => n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-let V, T;
+// N-120 batch F: VID = traject-ID (opruimen/D1), V = verkoper-inlogcode (legacy = traject-ID).
+let VID, V, T;
 // VOK-versie uit de bron (zelfde aanpak als e2e-ui), zodat de begeleider niet achter het VOK-venster blijft hangen.
 const VOK_VERSIE = (() => { try { const m = fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'mna', '04-begeleider-dashboard.js'), 'utf8').match(/VOK_VERSIE\s*=\s*'([^']+)'/); return (m && m[1]) || '1.5'; } catch { return '1.5'; } })();
 
 test.beforeAll(async () => {
   test.setTimeout(120000);
   const c = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth Equity Bridge B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'delivered@resend.dev' } });
-  V = c.json && c.json.code; T = c.json && c.json.tussen_code;
+  VID = c.json && c.json.code; V = c.json && (c.json.verkoper_inlogcode || c.json.code); T = c.json && c.json.tussen_code;
   await accepteerPlatformvoorwaarden([V, T]);
   await api('POST', '/mna/vok/teken', { body: { code: T, naam: 'Synth Begeleider', versie: VOK_VERSIE, email: 'delivered@resend.dev' } });
   for (const [jaar, factor] of [[2023, 0.95], [2024, 1]]) {
@@ -32,7 +33,7 @@ test.beforeAll(async () => {
     await api('POST', '/mna/kolommenbalans/toewijzen', { headers: B, body: { code: T, jaar: j.jaar, rekening: '9999', categorie: 'overig_resultaat', rev: j.rev } });
   }
 });
-test.afterAll(async () => { if (V) await ruimTrajectOp(V, ADMIN); });
+test.afterAll(async () => { if (V) await ruimTrajectOp(VID, ADMIN); });
 
 test('equity bridge: voorstellen, goedkeuren, overzicht en overname in het dealvoorstel', async ({ page }) => {
   test.setTimeout(150000);

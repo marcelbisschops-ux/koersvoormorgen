@@ -31,13 +31,14 @@ test('nieuw traject: vooraf ingevulde KvK en adres worden geaccepteerd in het op
   const resp = await w; const d = await resp.json();
   expect(resp.status(), JSON.stringify(d)).toBe(200);
   code = d.code;
+  const vCode = d.verkoper_inlogcode || d.code; // N-120 batch F: verkoper logt in met de inlogcode; code = traject-ID (D1/opruimen)
   const t = rij("SELECT verkoper_kvk, verkoper_adres, opening_voltooid FROM mna_trajecten WHERE id='" + code + "'");
   expect(t).toMatchObject({ verkoper_kvk: '12345678', verkoper_adres: 'Synthetischestraat 1, 1234 AB Testdorp' });
-  await accepteerPlatformvoorwaarden([code]);
+  await accepteerPlatformvoorwaarden([vCode]);
 
   // Verkoper logt in: openingsscherm met vooraf ingevulde KvK en adres.
   await page.goto('/mna.html?worker=' + encodeURIComponent(WORKER));
-  await page.locator('#l-code').fill(code);
+  await page.locator('#l-code').fill(vCode);
   // Na inloggen tekent loadEntiteiten() het scherm één keer opnieuw (zelfde patroon als e2e-52/e2e-3rollen): eerst daarop
   // wachten, anders kan een al ingevuld veld leeg worden en verstuurt de knop niets (suite-flake 19-11).
   const ent = page.waitForResponse((r) => r.url().includes('/mna/entiteiten/'), { timeout: 30000 });

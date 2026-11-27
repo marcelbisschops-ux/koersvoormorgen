@@ -9,14 +9,15 @@ import { api, leesAdminKey, WORKER, d1, IS_STAGING_WORKER, accepteerPlatformvoor
 test.skip(!IS_STAGING_WORKER, 'alleen staging');
 const ADMIN = leesAdminKey();
 const VOK = (() => { try { return (fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'mna', '04-begeleider-dashboard.js'), 'utf8').match(/VOK_VERSIE\s*=\s*'([^']+)'/) || [])[1] || '1.5'; } catch { return '1.5'; } })();
-let V, T;
+// N-120 batch F: VID = traject-ID (opruimen/D1/bestandsnaam), V = verkoper-inlogcode (legacy = traject-ID).
+let VID, V, T;
 test.beforeAll(async () => {
   const c = (await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth Print 159 B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'e2e-159@kvm-test.invalid' } })).json;
-  V = c.code; T = c.tussen_code;
+  VID = c.code; V = c.verkoper_inlogcode || c.code; T = c.tussen_code;
   await accepteerPlatformvoorwaarden([V, T]);
   await api('POST', '/mna/vok/teken', { body: { code: T, naam: 'Synth Begeleider', versie: VOK, email: 'e2e-159@kvm-test.invalid' } });
 });
-test.afterAll(async () => { if (V) await ruimTrajectOp(V, ADMIN); });
+test.afterAll(async () => { if (VID) await ruimTrajectOp(VID, ADMIN); });
 
 const SCHERMEN = [['begeleider', 'scherm_dashboard'], ['waardering', 'scherm_waardering'], ['dataroom', 'scherm_dataroom'], ['cover', 'scherm_overzicht'], ['main', 'scherm_due_diligence'], ['summary', 'scherm_samenvatting']];
 
@@ -57,7 +58,7 @@ test('N-159: printknoppen schermrapporten via de kennisname-pop-up', async ({ pa
     expect(na[na.length - 1], 'pop-up niet in beeld tijdens printen').toBe(false);
   }
   await page.waitForTimeout(800);
-  const rijen = d1("SELECT extra FROM mna_audit WHERE code IN ('" + V + "','" + T + "') AND actie='reliance_bevestiging' ORDER BY id").map((r) => JSON.parse(r.extra));
+  const rijen = d1("SELECT extra FROM mna_audit WHERE code IN ('" + VID + "','" + V + "','" + T + "') AND actie='reliance_bevestiging' ORDER BY id").map((r) => JSON.parse(r.extra));
   expect(rijen.map((r) => r.document_type)).toEqual(SCHERMEN.map((s) => s[1]));
   expect(rijen[0].herhaling).toBeUndefined();
   expect(rijen.slice(1).every((r) => r.herhaling === true && r.bevestigd_door === 'Synth Begeleider')).toBe(true);

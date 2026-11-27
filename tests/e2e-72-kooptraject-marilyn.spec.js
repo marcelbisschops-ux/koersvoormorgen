@@ -45,7 +45,7 @@ test('kooptraject aanmaken vanuit Marilyn en direct als begeleider openen', asyn
   await expect(page.locator('tr', { hasText: NAAM }).first()).toContainText('Kooptraject');
 
   // Begeleider opent de workspace van deze deal (voorwaarden/VOK via de bestaande stappen vooraf geaccepteerd).
-  await accepteerPlatformvoorwaarden([d.code, d.tussen_code, d.koper_code]);
+  await accepteerPlatformvoorwaarden([d.verkoper_inlogcode || d.code, d.tussen_code, d.koper_code]); // N-120 batch F
   const src = fs.readFileSync(new URL('../mna/04-begeleider-dashboard.js', import.meta.url), 'utf8');
   const versie = (src.match(/VOK_VERSIE\s*=\s*'([^']+)'/) || [])[1] || '1.5';
   await api('POST', '/mna/vok/teken', { body: { code: d.tussen_code, naam: 'Synth Begeleider', versie, email: 'b@bisschopsfinancing.test' } });

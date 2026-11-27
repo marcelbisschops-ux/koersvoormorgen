@@ -8,17 +8,18 @@ import { api, d1, leesAdminKey, accepteerPlatformvoorwaarden, ruimTrajectOp, IS_
 
 test.skip(!IS_STAGING_WORKER, 'alleen staging');
 const ADMIN = leesAdminKey();
-let V, T, K;
+// N-120 batch F: VID = traject-ID (opruimen/D1), V = verkoper-inlogcode (legacy = traject-ID).
+let VID, V, T, K;
 test.beforeAll(async () => {
   const c = await api('POST', '/mna/create', { adminKey: ADMIN, body: { kantoor_naam: 'Synth N146 Schermen B.V.', sector: 'accountancy', traject_type: 'Verkoop', contact_email: 'v@synth.invalid' } });
-  V = c.json.code; T = c.json.tussen_code; K = c.json.koper_code;
+  VID = c.json.code; V = c.json.verkoper_inlogcode || c.json.code; T = c.json.tussen_code; K = c.json.koper_code;
   await accepteerPlatformvoorwaarden([V, T, K]);
   // Notities en checklist zijn begeleidersonderdelen: VOK vooraf tekenen (zelfde als e2e-3rollen-regressie).
   const src = fs.readFileSync(new URL('../mna/04-begeleider-dashboard.js', import.meta.url), 'utf8');
   const versie = (src.match(/VOK_VERSIE\s*=\s*'([^']+)'/) || [])[1] || '1.5';
   await api('POST', '/mna/vok/teken', { body: { code: T, naam: 'Synth Begeleider', versie, email: 'b@synth.invalid' } });
 });
-test.afterAll(async () => { if (V) { const r = await ruimTrajectOp(V, ADMIN); expect(r && r.ok).toBeTruthy(); } });
+test.afterAll(async () => { if (V) { const r = await ruimTrajectOp(VID, ADMIN); expect(r && r.ok).toBeTruthy(); } });
 
 async function open(browser) {
   const page = await (await browser.newContext()).newPage();
@@ -35,7 +36,7 @@ async function open(browser) {
 // Lezen via de staging-D1 i.p.v. GET /mna/traject: die route telt als inlogpoging (limiet 15 per 10 min per IP) en
 // liet in de volledige pre-push-suite latere logins op 429 lopen.
 const d1Rij = (sql) => { const r = d1(sql); return Array.isArray(r) ? r[0] : (r && r.results ? r.results[0] : null); };
-const notitieServer = async (faseId) => { const r = d1Rij("SELECT notitie FROM mna_data WHERE id='" + V + '_' + faseId + "'"); return r ? r.notitie || '' : ''; };
+const notitieServer = async (faseId) => { const r = d1Rij("SELECT notitie FROM mna_data WHERE id='" + VID + '_' + faseId + "'"); return r ? r.notitie || '' : ''; };
 
 test('notitie van scherm A overleeft een opslag vanuit verouderd scherm B; conflict geeft een melding', async ({ browser }) => {
   test.setTimeout(420000);
