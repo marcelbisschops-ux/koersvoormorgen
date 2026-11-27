@@ -23,7 +23,7 @@ function finGeld(n) { if (typeof n !== 'number' || !isFinite(n)) return ''; var 
 function finPct(n) { return typeof n === 'number' && isFinite(n) ? String(n).replace('.', ',') + '%' : ''; }
 function finLabel(lijst, w) { for (var i = 0; i < lijst.length; i++) if (lijst[i][0] === w) return lijst[i][1]; return w; }
 function finScope() { var f = (typeof FASES !== 'undefined' && FASES[S.fase]) || null; return JSON.stringify([S.code || '', S.rol || '', f ? f.id : '']); }
-function finSync() { var k = finScope(); if (FIN.scope !== k) { FIN.scope = k; FIN.status = 'idle'; FIN.data = null; FIN.bezig = false; FIN.melding = null; FIN.form = null; FIN.eqForm = null; FIN.wsForm = null; } }
+function finSync() { var k = finScope(); if (FIN.scope !== k) { FIN.scope = k; FIN.status = 'idle'; FIN.data = null; FIN.bezig = false; FIN.melding = null; FIN.form = null; FIN.eqForm = null; FIN.wsForm = null; FIN.aiOpen = false; FIN.aiKeuze = {}; FIN.aiResultaat = null; } }
 function finHeaders() { var h = { 'Content-Type': 'application/json' }; if (isTussen()) h['x-tussen-key'] = S._bgKey || ''; return h; }
 function finHerteken() {
   var f = (typeof FASES !== 'undefined' && FASES[S.fase]) || null, bewaard = [];
@@ -160,7 +160,7 @@ function finNmHtml(n) {
   var bg = isTussen(), dis = FIN.bezig ? ' disabled' : '';
   var h = '<div style="border:1px solid var(--border);border-radius:var(--r);padding:.5rem .7rem;margin:.35rem 0;font-size:12px;color:var(--sub)">'
     + '<div><strong>' + finEsc(n.jaar) + ' · ' + finEsc(n.omschrijving) + '</strong> · ' + finGeld(n.bedrag) + ' · ' + finEsc(finLabel(FIN_POST, n.post)) + ' · <em>' + finEsc(FIN_STATUS[n.status] || n.status) + '</em></div>'
-    + '<div style="color:var(--muted)">' + finEsc(n.soort === 'eigen' && n.soort_label ? n.soort_label : finLabel(FIN_SOORT, n.soort)) + ' · ' + finEsc(n.karakter) + ' · zekerheid ' + finEsc(n.zekerheid) + ' · herkomst ' + finEsc(n.herkomst === 'kvm' ? 'KVM-voorstel' : n.herkomst) + '</div>'
+    + '<div style="color:var(--muted)">' + finEsc(n.soort === 'eigen' && n.soort_label ? n.soort_label : finLabel(FIN_SOORT, n.soort)) + ' · ' + finEsc(n.karakter) + ' · zekerheid ' + finEsc(n.zekerheid) + ' · herkomst ' + finEsc(n.herkomst === 'kvm' ? 'KVM-voorstel' : n.herkomst === 'ai' ? 'AI-voorstel uit document' : n.herkomst) + '</div>'
     + '<div>Bron: ' + finEsc(n.bron) + (n.grootboekrekening ? ' · grootboekrekening ' + finEsc(n.grootboekrekening) : '') + (n.oorspronkelijk_bedrag != null ? ' · oorspronkelijk bedrag ' + finGeld(n.oorspronkelijk_bedrag) : '') + ' · versie ' + finEsc(n.versie || 1) + '</div>'
     + (n.berekeningswijze ? '<div>Berekeningswijze: ' + finEsc(n.berekeningswijze) + '</div>' : '')
     + (n.ontbrekende_info ? '<div style="color:var(--gold-dark)"><strong>Informatieverzoek:</strong> ' + finEsc(n.ontbrekende_info) + '</div>' : '')
@@ -318,6 +318,66 @@ function finWsHtml(d) {
   }
   return h;
 }
+// ── KVM-014 stap 7: AI-voorstellen uit documenten + meting (alleen begeleider) ─────────────────────────
+// De begeleider kiest documenten en start de analyse expliciet; de server controleert elk voorstel op een letterlijke bron
+// en slaat alleen voorstellen of geparkeerde informatieverzoeken op (nooit goedgekeurd). Timeout 60 s (fetchMetTimeout).
+window.finAiOpen = function () { FIN.aiOpen = !FIN.aiOpen; FIN.aiKeuze = FIN.aiKeuze || {}; finHerteken(); };
+window.finAiKies = function (el) { var id = el.getAttribute('data-id'); FIN.aiKeuze = FIN.aiKeuze || {}; if (el.checked) FIN.aiKeuze[id] = true; else delete FIN.aiKeuze[id]; };
+window.finAiStart = function () {
+  if (FIN.bezig || !FIN.data) return;
+  var geldig = (FIN.data.ai_documenten || []).map(function (x) { return x.id; });
+  var ids = Object.keys(FIN.aiKeuze || {}).filter(function (id) { return geldig.indexOf(id) >= 0; });
+  if (!ids.length || ids.length > 5) { FIN.melding = { soort: 'fout', tekst: 'Kies één tot vijf documenten voor de analyse.' }; finHerteken(); return; }
+  FIN.bezig = true; FIN.melding = { soort: 'ok', tekst: 'AI-analyse loopt (meestal 20 tot 50 seconden)…' }; finHerteken();
+  finAntw(fetchMetTimeout(WORKER + '/mna/financieel/normalisatie/ai-voorstellen', { method: 'POST', headers: finHeaders(), body: JSON.stringify({ code: S.code, document_ids: ids }) }, 60000)).then(function (x) {
+    FIN.bezig = false;
+    if (x.s === 200 && x.d && x.d.ok === true && Array.isArray(x.d.jaren)) {
+      FIN.data = x.d; FIN.aiResultaat = x.d.ai || null; FIN.aiOpen = false; FIN.aiKeuze = {};
+      FIN.melding = { soort: 'ok', tekst: 'AI-analyse klaar: ' + (x.d.nieuw || 0) + ' nieuw. Niets is goedgekeurd; beoordeel elk voorstel hieronder.' };
+    } else if (x.s === 0) {
+      FIN.melding = { soort: 'fout', tekst: 'Geen antwoord binnen 60 seconden. De analyse kan nog lopen; herlaad over een minuut om te zien of er voorstellen zijn bijgekomen.' };
+    } else {
+      var t = (x.d && x.d.tokens) ? ' (tokens: ' + x.d.tokens.input + ' in, ' + x.d.tokens.output + ' uit)' : '';
+      FIN.melding = { soort: 'fout', tekst: ((x.d && x.d.error) || ('Niet gelukt (HTTP ' + x.s + ').')) + t };
+    }
+    finHerteken();
+  });
+};
+function finGetal(n) { return typeof n === 'number' && isFinite(n) ? Math.round(n).toLocaleString('nl-NL') : '0'; }
+function finAiHtml(d) {
+  if (!isTussen()) return '';
+  var dis = FIN.bezig ? ' disabled' : '', m = d.meting && d.meting.ai, docs = d.ai_documenten || [];
+  var gebruik = m ? 'Analyses in de laatste 24 uur: ' + m.laatste_24u + ' van ' + m.per_dag + '.' : '';
+  var h = '<div style="border:1px dashed var(--border);border-radius:var(--r);padding:.5rem .7rem;margin:.5rem 0;font-size:12px;color:var(--sub)" id="fin-ai">'
+    + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn-ghost btn-sm" style="font-size:11px" onclick="finAiOpen()"' + (d.ai_beschikbaar === false ? ' disabled' : dis) + '>AI-voorstellen uit documenten</button><span style="color:var(--muted)">' + finEsc(gebruik) + '</span></div>';
+  if (d.ai_beschikbaar === false) h += '<div style="color:var(--muted)">De AI-analyse is op dit moment niet beschikbaar.</div>';
+  if (FIN.aiOpen) {
+    h += '<div style="margin-top:.4rem;line-height:1.6">KVM leest de gekozen documenten en stelt normalisaties voor. Elk voorstel noemt het document en de letterlijke passage. Een bedrag dat niet in de passage staat wordt geweigerd; voor marktconforme beloning, huur of vervanging noemt KVM geen bedrag maar maakt het een informatieverzoek. Niets wordt automatisch goedgekeurd. Kies maximaal vijf documenten (pdf, Word, Excel, csv of tekst).</div>';
+    if (!docs.length) h += '<div style="color:var(--muted)">Er zijn nog geen leesbare documenten in dit traject.</div>';
+    else h += docs.map(function (x) { return '<label style="display:block"><input type="checkbox" data-id="' + finEsc(x.id) + '" onchange="finAiKies(this)"' + ((FIN.aiKeuze || {})[x.id] ? ' checked' : '') + dis + '> ' + finEsc(x.naam) + (x.fase_id ? ' <span style="color:var(--muted)">(' + finEsc(x.fase_id) + ')</span>' : '') + '</label>'; }).join('')
+      + '<div style="margin-top:.4rem"><button class="btn btn-sm" style="font-size:11px" onclick="finAiStart()"' + dis + '>Analyse starten</button></div>';
+  }
+  var r = FIN.aiResultaat;
+  if (r) {
+    h += '<div style="margin-top:.4rem" id="fin-ai-resultaat"><strong>Laatste analyse:</strong> ' + r.voorstellen + ' voorstel(len) met bedrag, ' + r.geparkeerd + ' informatieverzoek(en), ' + r.geweigerd + ' geweigerd, ' + r.dubbel + ' overgeslagen als mogelijk dubbel.'
+      + (r.tokens ? ' Tokens: ' + finGetal(r.tokens.input) + ' invoer, ' + finGetal(r.tokens.output) + ' uitvoer' + (r.tokens.cache_read ? ', ' + finGetal(r.tokens.cache_read) + ' uit cache' : '') + '.' : '')
+      + ((r.geweigerd_lijst || []).length ? '<div>Geweigerd: ' + r.geweigerd_lijst.map(function (g) { return finEsc((g.omschrijving || 'voorstel ' + g.nr) + ': ' + g.reden); }).join('; ') + '</div>' : '')
+      + ((r.onleesbaar || []).length ? '<div>Niet gelezen: ' + r.onleesbaar.map(finEsc).join(', ') + '</div>' : '')
+      + ((r.ingekort || []).length ? '<div>Ingekort (alleen het begin gelezen): ' + r.ingekort.map(finEsc).join(', ') + '</div>' : '')
+      + (r.opmerking ? '<div style="color:var(--muted)">Opmerking AI: ' + finEsc(r.opmerking) + '</div>' : '') + '</div>';
+  }
+  return h + '</div>';
+}
+// Tijdsbesparingsmeting: herkomst en doorlooptijd tot besluit, uit de bestaande versiegeschiedenis (geen schatting).
+function finMetingHtml(d) {
+  var m = d.meting;
+  if (!isTussen() || !m || !m.totaal) return '';
+  var uur = function (v, nb) { return v === null || v === undefined ? 'nog geen besluit' : String(v).replace('.', ',') + ' uur (' + nb + ' beslist)'; };
+  return '<div style="font-size:12px;color:var(--sub);margin:.5rem 0;line-height:1.6" id="fin-meting"><strong>Meting:</strong> ' + m.uit_voorstel + ' van ' + m.totaal + ' normalisaties kwamen uit voorstellen (KVM ' + m.herkomst.kvm + ', AI ' + m.herkomst.ai + '), ' + m.handmatig + ' handmatig.'
+    + (m.acceptatie_voorstellen_pct !== null ? ' Goedgekeurd van de beoordeelde voorstellen: ' + String(m.acceptatie_voorstellen_pct).replace('.', ',') + '%.' : '')
+    + ' Mediane tijd van aanmaken tot besluit: voorstellen ' + uur(m.doorlooptijd_uren_mediaan.voorstel, m.beslist.voorstel) + ', handmatig ' + uur(m.doorlooptijd_uren_mediaan.handmatig, m.beslist.handmatig) + '.'
+    + (m.ai && m.ai.analyses ? ' AI-gebruik: ' + m.ai.analyses + ' analyse(s), ' + finGetal(m.ai.input_tokens) + ' invoer- en ' + finGetal(m.ai.output_tokens) + ' uitvoertokens.' : '') + '</div>';
+}
 function renderFinancieleAnalyse(faseId) {
   finSync();
   if (faseId !== 'financieel' || !(isVerkoper() || isTussen()) || !S.code) return '';
@@ -330,7 +390,7 @@ function renderFinancieleAnalyse(faseId) {
   h += finAansluitingHtml(d) + finHistorieAansluitingHtml(d)
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:.6rem">' + (isTussen() ? '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finVoorstellen()"' + dis + '>Voorstellen van KVM ophalen</button>' : '')
     + '<button class="btn-ghost btn-sm" style="font-size:11px" onclick="finOpenForm()"' + dis + '>Normalisatie voorstellen</button></div>'
-    + (FIN.form ? finFormHtml() : '') + d.normalisaties.map(finNmHtml).join('') + finPrognoseHtml(d) + finEqHtml(d) + finWsHtml(d);
+    + finAiHtml(d) + (FIN.form ? finFormHtml() : '') + finMetingHtml(d) + d.normalisaties.map(finNmHtml).join('') + finPrognoseHtml(d) + finEqHtml(d) + finWsHtml(d);
   return h + '</div>';
 }
 // Dealvoorstel (mna/04): genormaliseerde EBITDA en goedgekeurde prognose als expliciete keuze, nooit automatisch.
