@@ -39,6 +39,8 @@
 # $REGRESSIE_STATUS en vóór elke productiestap gecontroleerd.
 # ══════════════════════════════════════════════════════════════════
 set -euo pipefail
+# N-213: nooit een ingetrokken token uit een oude omgeving gebruiken.
+. "$(cd "$(dirname "$0")" && pwd)/cf-auth.sh"; cf_auth_opschonen
 
 # 12-11-2026 (releasegate N-203): releases worden vanuit een releasewerkboom gebouwd, niet vanuit de hoofdcheckout.
 # Zonder deze overschrijving werd het script in de praktijk omzeild met losse commando's (precies waar de gate brak).
