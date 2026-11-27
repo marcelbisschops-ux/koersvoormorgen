@@ -2518,6 +2518,17 @@ log('KVM-005 getalnotatie: multiples en bedragvelden in NL-notatie, vergelijking
   } catch (e) { warn('KVM-005: test faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
 }
 
+log('KVM-015 Quick Visit: bezoekverslag (payload, concept lokaal en op de server, herhaling met dezelfde sleutel, duplicaatkeuze, escaping) en handleiding mna/adv');
+{
+  try {
+    const { execFileSync } = await import('child_process');
+    execFileSync(process.execPath, [path.join(ROOT, 'tests/kvm015-bezoek-ui.mjs')], { stdio: 'pipe', cwd: ROOT });
+    const h = fs.readFileSync(path.join(ROOT, 'mna/08-handleiding.js'), 'utf8'), adv = fs.readFileSync(path.join(ROOT, 'adv.html'), 'utf8');
+    if (!/stap\('14c','Bezoekverslag \(Quick Visit\)/.test(h) || !/stap\('9c','Bezoekverslag \(Quick Visit\)/.test(adv)) warn('KVM-015: handleiding mna/adv niet bijgewerkt');
+    else ok('KVM-015: bezoekverslag (tests/kvm015-bezoek-ui.mjs groen) en handleiding mna en adv.');
+  } catch (e) { warn('KVM-015: tests/kvm015-bezoek-ui.mjs faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
+}
+
 log('Releaseherkomst: geen uitrol vanuit een werkboom met wijzigingen of niet-vastgelegde bestanden (Codex-review 18-11, P2)');
 {
   try {
