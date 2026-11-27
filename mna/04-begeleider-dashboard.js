@@ -2536,6 +2536,10 @@ function renderBegeleiderDashboard(app){
     +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#128172; Gesprekken &amp; verslagen</div>'
     +'<div id="bg-gesprekken-sectie" style="font-size:12px;color:var(--muted);font-style:italic">Laden...</div>'
     +'</div>'
+    +'<div style="margin-top:1.25rem">'
+    +'<div style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">&#9993; Communicatie</div>'
+    +'<div id="bg-communicatie-sectie" style="font-size:12px;color:var(--muted);font-style:italic">Laden...</div>'
+    +'</div>'
     +'</div>';
 
   app.innerHTML=html;
@@ -2565,6 +2569,7 @@ function renderBegeleiderDashboard(app){
   laadRisicoBadges();
   laadDocFlowStatus();
   bgLaadConsistentie();
+  if(typeof bgLaadCommunicatie==='function')bgLaadCommunicatie(); // KVM-009 C1 (mna/28)
   (function(){
     var chk=document.getElementById('bg-ca-chk'); var det=document.getElementById('bg-ca-detail');
     var btn=document.getElementById('bg-ca-opslaan');

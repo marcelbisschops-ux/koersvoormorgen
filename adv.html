@@ -774,6 +774,7 @@ function renderAdvHandleiding(){
         + stap('2i2','Teaser met grafieken en herleidbaarheidscontrole','Bij "Teaser bekijken/bewerken" staat de knop "Voorbeeld met grafieken". Die maakt de pdf zoals de ontvanger hem krijgt: bovenaan de sector met een eigen illustratie en tegels met bandbreedtes (omzetklasse, EBITDA-marge, teamomvang, aantal klanten en terugkerende omzet), onder de tekst de omzetontwikkeling als index waarbij het eerste jaar 100 is. Er staan nooit bedragen, namen, plaatsen, logo\'s of foto\'s in. Een tegel zonder gegevens in het dossier vervalt. Tegelijk controleert het platform de tekst en de grafieken op exacte bedragen uit het dossier, de kantoornaam, de contactpersoon, entiteitnamen, KvK-nummers, e-mailadressen en plaatsnamen uit de omschrijving van de marktpositie. Vindt het iets, dan ziet u wat en past u de tekst aan. Is de controle groen, dan vinkt u aan dat u het voorbeeld hebt bekeken en akkoord bent; pas daarna kunt u versturen. Wijzigt u de tekst, dan maakt u opnieuw een voorbeeld. De controle is een hulpmiddel: lees de teaser altijd zelf na.')
         + stap('2a','Interne notitie bij een traject','Op de detailpagina van een traject staat het blok Interne notitie. Hier leg je eigen aantekeningen vast. De notitie wordt bij het traject bewaard en staat er weer als je het traject opnieuw opent; overige gegevens van het voorgesprek blijven ongewijzigd. Heeft iemand de notitie intussen elders gewijzigd, dan zie je de actuele tekst met jouw niet-opgeslagen tekst eronder, zodat je niets kwijtraakt.')
         + stap('2b','Documentdekking','Op het traject-dashboard ziet u per DD-fase welke vereiste documenten (bijv. jaarrekeningen, KvK-uittreksel) al zijn aangeleverd — automatisch bijgewerkt zodra een document met een herkenbare bestandsnaam wordt geüpload. Klap een fase open voor de lijst met ontbrekende documenten (verplicht/optioneel). Puur een hulpmiddel op bestandsnaam, geen inhoudelijke AI-beoordeling — een verkeerd benoemd bestand kan gemist worden.')
+        + stap('2b3','Communicatie: verstuurde e-mails per traject','Op het traject-dashboard ziet u bij de kaart <strong>Communicatie</strong> welke e-mails vanuit dit traject zijn verstuurd: datum, ontvanger (rol en een verkort e-mailadres), onderwerp en status. <strong>Verzonden</strong> betekent dat de mailprovider de verzending heeft bevestigd. <strong>Mislukt</strong> betekent dat het bericht niet is verstuurd, met de foutcode erbij; verstuur het dan opnieuw vanaf de plek waar u het oorspronkelijk verstuurde. <strong>Niet bevestigd</strong> betekent dat de verzending niet kon worden bevestigd; ga er dan niet van uit dat het bericht is aangekomen. De inhoud van de berichten wordt hier niet bewaard, alleen deze gegevens. Verkoper en koper zien dit overzicht niet.')
         + stap('2c','Teaser &amp; verkoopmemorandum (module Marketing)','Is de module "Marketing" actief, dan staan in het traject-dashboard (mna.html), gewoon tussen de andere documenten in de Documenten-flow: een <strong>teaser</strong> (kort, anoniem, geen bedrijfsnaam, vóór de NDA — geschikt om vroeg in het proces breed te verspreiden, vóór er een koper is; uitsluitend door u als begeleider aan te maken) en een <strong>verkoopmemorandum</strong> (uitgebreid, mét bedrijfsnaam; het concept mag u al vóór de NDA opstellen, versturen pas ná de NDA). Beide worden automatisch gevuld met de al ingevulde DD-data, zijn bewerkbaar vóór verspreiding, en verzinnen nooit ontbrekende informatie. Onderdelen zonder gegevens laat het verkoopmemorandum weg; alleen u ziet welke dat zijn. Print / PDF levert een informatiememorandum met voorblad, inhoudsopgave, paginanummers en een disclaimer. "Opslaan" bewaart de tekst bij het traject (geen bestand-download); met "Print / PDF" maakt de begeleider er een net opgemaakt document van om te versturen — geen groot CONCEPT-watermerk zoals bij de contracten, maar het verkoopmemorandum krijgt onder de kop wél een discrete regel "Conceptversie — controleer vóór verspreiding". Of het traject zichtbaar is op de live matching-pagina regelt u niet op mna.html, maar hier in uw eigen adviseursportaal — zie de kaart "Matching-platform" bij dit traject.')
         + stap('2d','Matching-platform','Zodra dit traject een teaser heeft, kunt u het bij de kaart "Matching-platform" (bij dit traject) zelf "beschikbaar voor matching" zetten — verschijnt dan anoniem op het losse matching-platform, gefilterd op sector/regio/omzetklasse tegen de daar geregistreerde koper-zoekprofielen (geen AI, puur filtering). Meldt een koper zich daar aan, dan gebeurt automatisch: hij krijgt zijn inlogcode gemaild, u ontvangt een melding met naam/e-mail plus het matching-tarief, en het traject verdwijnt van de matching-pagina. <strong>Dit is geen automatische vervolgstap</strong> in de rest van het traject: de koper ziet nog niets inhoudelijks — u stuurt zelf de NDA en geeft daarna zelf de DD-fases vrij, exact zoals bij elke andere koper.')
         + stap('2f','Review uit de specialistenpool','Heeft u voor een vakgebied (juridisch, fiscaal of cijfers) geen eigen specialist, dan schakelt u er één in uit de pool van Bisschops Financing — in het composer-blok "Beoordeling &amp; aftekening" via "Vraag een review aan uit de pool". U kiest eerst het vakgebied — de specialistenlijst groepeert dan passende specialisten bovenaan (alleen profiel/tarief/doorlooptijd zichtbaar), geeft instructie + deadline, en ziet de kosteninschatting (honorarium + platformbemiddeling) vóór bevestigen. U stuurt de gegenereerde link zelf naar de specialist; die ziet uitsluitend de gescopte onderdelen en tekent af met naam + hoedanigheid, waarna de finaliseer-poort opent. De beoordeling is de professionele verantwoordelijkheid van de specialist. Geen verplichting: u kunt de aftekeneis per vakgebied ook uitzetten (gelogd, op het document vermeld) of zelf aftekenen. Het honorarium en de platformmarge worden als fee-events op het traject geboekt; u ziet ze onder "&euro; Kosten".')
@@ -1621,6 +1622,11 @@ function renderDetail(t){
       </div>
 
       <div class="card">
+        <div class="card-hdr"><div class="card-title">&#9993; Communicatie</div></div>
+        <div id="communicatie-body" class="card-body"><div style="color:var(--muted);font-size:13px">Laden...</div></div>
+      </div>
+
+      <div class="card">
         <div class="card-hdr">
           <div class="card-title">📁 Dataroom — Documenten</div>
           <button class="btn btn-sm" id="btn-upload">↑ Document uploaden</button>
@@ -1655,8 +1661,41 @@ function renderDetail(t){
     laadAdvNotitie(id);
     initMeekijkersAdv(id, t.tussen_code, t.sector||'accountancy');
     laadDocumentdekking(id, t.tussen_code);
+    laadCommunicatieAdv(id, t.tussen_code);
     initMatchingAdv(id, t.tussen_code, t);
   }
+}
+
+// KVM-009 C1: communicatiehistorie van dit traject (verstuurde e-mails met rol, onderwerp en status). 'Verzonden'
+// alleen als de mailprovider de verzending heeft bevestigd; dat bepaalt de server (GET /mna/communicatielog/{code}).
+var CL_ROL_ADV={verkoper:'Verkoper',koper:'Koper',begeleider:'Begeleider',kandidaat:'Kandidaat',specialist:'Specialist',meekijker:'Meekijker',meerdere:'Meerdere ontvangers',onbekend:'Onbekend'};
+var CL_STATUS_ADV={verzonden:['Verzonden','var(--teal)'],mislukt:['Mislukt','var(--red)'],onbevestigd:['Niet bevestigd','var(--gold)'],overgeslagen:['Overgeslagen (testadres)','var(--muted)']};
+async function laadCommunicatieAdv(id, tussenCode){
+  var el=ge('communicatie-body');
+  if(!el)return;
+  try{
+    var r=await fetch(WORKER+'/mna/communicatielog/'+encodeURIComponent(id),{headers:{'x-tussen-key':tussenCode||''},cache:'no-store'});
+    var d=r.ok?await r.json():null;
+    if(ge('communicatie-body')!==el)return;
+    if(!d||d.ok!==true){el.innerHTML='<div style="color:var(--muted);font-size:13px">De communicatiehistorie kon niet worden geladen.</div>';return;}
+    var lijst=d.berichten||[];
+    if(!lijst.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;font-style:italic">Nog geen e-mails verstuurd vanuit dit traject.</div>';return;}
+    var html='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="text-align:left;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em">'
+      +'<th style="padding:4px 6px">Datum</th><th style="padding:4px 6px">Ontvanger</th><th style="padding:4px 6px">Onderwerp</th><th style="padding:4px 6px">Status</th></tr></thead><tbody>';
+    lijst.forEach(function(b){
+      var st=CL_STATUS_ADV[b.status]||CL_STATUS_ADV.onbevestigd;
+      var dt=new Date(Number(b.ts)||0);
+      var datum=b.ts&&!isNaN(dt.getTime())?dt.toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'})+' '+dt.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}):'';
+      var fout=(b.status==='mislukt'||b.status==='onbevestigd')&&b.foutcode?' <span style="color:var(--muted)">('+esc(b.foutcode)+')</span>':'';
+      html+='<tr><td style="padding:5px 6px;border-top:1px solid var(--border);white-space:nowrap">'+esc(datum)+'</td>'
+        +'<td style="padding:5px 6px;border-top:1px solid var(--border)">'+esc(CL_ROL_ADV[b.rol]||'Onbekend')+'<div style="font-size:11px;color:var(--muted)">'+esc(b.ontvanger||'')+'</div></td>'
+        +'<td style="padding:5px 6px;border-top:1px solid var(--border)">'+esc(b.onderwerp||'')+'</td>'
+        +'<td style="padding:5px 6px;border-top:1px solid var(--border);white-space:nowrap;color:'+st[1]+';font-weight:600">'+esc(st[0])+fout+'</td></tr>';
+    });
+    html+='</tbody></table></div>';
+    if(lijst.length>=(d.max||200))html+='<div style="font-size:11px;color:var(--muted);margin-top:4px">Alleen de laatste '+esc(String(d.max||200))+' berichten worden getoond.</div>';
+    el.innerHTML=html;
+  }catch(e){if(ge('communicatie-body')===el)el.innerHTML='<div style="color:var(--muted);font-size:13px">De communicatiehistorie kon niet worden geladen.</div>';}
 }
 
 async function laadDocumentdekking(id, tussenCode){
