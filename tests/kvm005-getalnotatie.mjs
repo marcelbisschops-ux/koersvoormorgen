@@ -54,5 +54,22 @@ for (const f of bronnen) fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n')
   if (/toFixed\(\d\)\s*\+\s*'\s*(x|×|\\xd7|\\u00d7|&times;)/.test(r) || /\+\s*'\\xd7 '/.test(r)) multPunt.push(f + ':' + (i + 1));
 });
 ok(multPunt.length === 0, "geen multiple-weergave meer als toFixed(n)+'x'/'×' in mna, adv en marilyn (gebruik fmtMultiple)", multPunt);
+// KVM-005 (27-11-2026): percentages en decimalen in NL-notatie via fmtPct/fmtDec (mna/03), exports ongewijzigd.
+{
+  const vm2 = await import('vm');
+  const bron = fs.readFileSync(path.join(ROOT, 'mna/03-rekenkern-waardering.js'), 'utf8');
+  const c2 = { Number, isNaN }; vm2.createContext(c2);
+  vm2.runInContext(bron.split('\n').filter((l) => /^function fmt(Dec|Pct)\(/.test(l)).join('\n'), c2);
+  ok(c2.fmtPct(12.5, 1) === '12,5%' && c2.fmtPct(-3, 1) === '-3,0%' && c2.fmtPct(1234.5, 1) === '1.234,5%', 'fmtPct: komma als decimaalteken, punt als duizendtal', [c2.fmtPct(12.5, 1), c2.fmtPct(-3, 1), c2.fmtPct(1234.5, 1)]);
+  ok(c2.fmtDec(1.25, 2) === '1,25' && c2.fmtPct(null, 1) === '—' && c2.fmtDec('', 1) === '—', 'fmtDec en lege waarden');
+  const pctPunt = [];
+  for (const f of ['mna/03-rekenkern-waardering.js', 'mna/06-schermen.js', 'marilyn.html']) {
+    fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').forEach((r, i) => {
+      if (/(x|y|x1|y1|x2|y2|width|height)="'/.test(r) || /regel\(\[|\.voeg\(|Number\(\(|lijnen\.push/.test(r)) return;
+      if (/toFixed\([1-9]\)\s*\+\s*'%/.test(r)) pctPunt.push(f + ':' + (i + 1));
+    });
+  }
+  ok(pctPunt.length === 0, "geen zichtbaar percentage meer als toFixed(n)+'%' in schermcode (gebruik fmtPct); CSV-export en interne cijferlijst uitgezonderd", pctPunt);
+}
 console.log(fout ? '✗ ' + fout + '/' + n + ' gefaald' : n + '/' + n + ' geslaagd');
 process.exit(fout ? 1 : 0);
