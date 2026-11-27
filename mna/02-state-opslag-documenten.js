@@ -3111,14 +3111,8 @@ async function refreshData(){
       basisExtraStart(d.data);
       if(d.data && d.data.length) loadDataFromDB(d.data);
       S.rol = d.rol;
-      // N-83 (27 sep 2026): ééns per sessie, ná de eerste geslaagde login, de volledige
-      // sectorprofielen (incl. benchmarkwaarden) alsnog ophalen — vóór login gaf laadSectorProfielen()
-      // hierboven alleen de gestripte structuur (zie mna/07-start-chat.js). Guard voorkomt herhaalde
-      // fetches bij elke refreshData()-aanroep (bijv. polling).
-      if (!S._volledigeSectorProfielenGeladen && typeof laadSectorProfielen === 'function' && S.code) {
-        S._volledigeSectorProfielenGeladen = true;
-        laadSectorProfielen(S.code);
-      }
+      // Na een tijdelijke laadfout opnieuw proberen; geslaagde sessies laden maar één keer.
+      if (typeof laadSectorProfielenVoorSessie === 'function') laadSectorProfielenVoorSessie();
       S.modules = d.modules || S.modules || null;
       S.tos_status = d.tos_status || null;
       syncDocVeldenVanTraject(d);

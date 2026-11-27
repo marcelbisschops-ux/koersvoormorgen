@@ -19,11 +19,12 @@ const ONDERDELEN = [
 const foto = async (page, naam) => { if (!SHOTS) return; fs.mkdirSync(SHOTS, { recursive: true }); await page.screenshot({ path: path.join(SHOTS, naam + '.png'), fullPage: false }); };
 
 async function login(page) {
-  // Niets mag de pagina verlaten richting een verzendroute: elke niet-GET buiten de inlogmelding wordt geblokkeerd en geteld.
+  // De loginnotificatie wordt lokaal beantwoord. Alle andere externe schrijfrequests worden geblokkeerd en geteld.
   const geblokkeerd = [];
   await page.route('**/*', (route) => {
     const r = route.request(), u = new URL(r.url());
-    if (r.method() !== 'GET' && r.method() !== 'OPTIONS' && u.pathname !== '/admin/login-notify' && u.hostname !== 'localhost') { geblokkeerd.push(r.method() + ' ' + u.pathname); return route.abort(); }
+    if (r.method() === 'POST' && u.pathname === '/admin/login-notify') return route.fulfill({ status: 204 });
+    if (r.method() !== 'GET' && r.method() !== 'OPTIONS' && u.hostname !== 'localhost') { geblokkeerd.push(r.method() + ' ' + u.pathname); return route.abort(); }
     return route.continue();
   });
   await page.goto('/marilyn.html?worker=' + encodeURIComponent(WORKER));

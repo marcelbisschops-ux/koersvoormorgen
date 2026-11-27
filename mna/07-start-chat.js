@@ -11,14 +11,22 @@ document.title = 'M&A Begeleiding - ' + BRAND.platform;
 // hebben (generateAI() in mna/06-schermen.js, de rekenkern) ze alsnog krijgen — geautoriseerd via
 // exact hetzelfde bewijs (een geldige trajectcode) als elke andere trajectgebonden aanroep.
 function laadSectorProfielen(code){
+  var sessie = S;
   var url = WORKER + '/mna/sectorprofielen' + (code ? ('?code=' + encodeURIComponent(code)) : '');
   return fetch(url).then(function(r){ return r.json(); }).then(function(d){
-    if (!d || !d.ok || !d.profielen || !Object.keys(d.profielen).length) return;
+    if (S !== sessie || !d || !d.ok || !d.profielen || !Object.keys(d.profielen).length) return;
     Object.keys(d.profielen).forEach(function(k){ SECTOR_PROFIELEN[k] = d.profielen[k]; });
+    if (code) S._volledigeSectorProfielenGeladen = true;
     FASES = getSectorFases();
     // Al voorbij het loginscherm? Herteken zodat de nieuwste velden/labels meteen kloppen.
     if (S && S.screen && S.screen !== 'login') { try { renderApp(); } catch(e){} }
   }).catch(function(){ /* offline-fallback: hardgecodeerde profielen blijven gelden */ });
+}
+function laadSectorProfielenVoorSessie(){
+  var sessie = S;
+  if (!sessie.code || sessie._volledigeSectorProfielenGeladen || sessie._sectorProfielenLaden) return;
+  sessie._sectorProfielenLaden = true;
+  return laadSectorProfielen(sessie.code).finally(function(){ sessie._sectorProfielenLaden = false; });
 }
 laadSectorProfielen();
 

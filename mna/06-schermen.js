@@ -1449,6 +1449,7 @@ function bindAll(){
         // Groepsstructuur (Fase 2): S is hierboven volledig herbouwd — de groepsdata-alias opnieuw
         // vastzetten vóórdat loadDataFromDB hieronder de opgehaalde rijen erin gaat wegschrijven.
         S._groepData=S.data;
+        if (typeof laadSectorProfielenVoorSessie === 'function') laadSectorProfielenVoorSessie();
         // Sessie starten + audit log
         SEC.attempts = 0;
         secStartSession();
