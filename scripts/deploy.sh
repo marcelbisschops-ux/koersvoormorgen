@@ -88,7 +88,7 @@ vraag_release_go() { # $1 = onderdeel; vereist expliciete GO voor exact deze com
   echo "🔴 Geen expliciete GO voor $1 ${kort} — productie wordt NIET gestart."; exit 1
 }
 controleer_productieherkomst() {
-  if node "$FE_DIR/scripts/releaseherkomst.mjs"; then return 0; fi
+  if node "$FE_DIR/scripts/releaseherkomst.mjs" "$@"; then return 0; fi
   echo "🔴 AFWIJKING: de draaiende productie is niet herleidbaar tot GitHub (zie hierboven). Niets overschreven; onderzoek voordat je verdergaat."
   exit 1
 }
@@ -163,7 +163,7 @@ deploy_backend_prod() {
   echo -n "Health check: "
   curl -s "$WORKER_URL/health" || echo "(health-check mislukt — controleer handmatig)"
   echo ""
-  controleer_productieherkomst
+  controleer_productieherkomst --expect-worker-commit "$HERKOMST_COMMIT"
   if [ "${KVM_SKIP_PREDEPLOY:-}" != "1" ]; then
     bash ./predeploy.sh --rapporteer-productie
   fi

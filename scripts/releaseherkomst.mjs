@@ -10,7 +10,7 @@
 // Vergelijking via kale spiegels van de GitHub-repo's (geen werkmap wordt aangeraakt):
 //   ~/Developer/KVM/mirror/{koersvoormorgen,koersvoormorgen-backend}.git  (git clone --mirror, hier bijgewerkt; KVM_SPIEGEL_DIR overschrijft)
 //
-// Gebruik: node scripts/releaseherkomst.mjs [--json] [--worker <naam>]
+// Gebruik: node scripts/releaseherkomst.mjs [--json] [--worker <naam>] [--expect-worker-commit <volledige SHA>]
 import { execFileSync } from 'child_process';
 import os from 'os';
 import path from 'path';
@@ -20,6 +20,12 @@ import fs from 'fs';
 const SPIEGEL = process.env.KVM_SPIEGEL_DIR || path.join(os.homedir(), 'Developer', 'KVM', 'mirror');
 const REPO = { backend: 'koersvoormorgen-backend', frontend: 'koersvoormorgen' };
 // --worker <naam> alleen voor een negatieve proef (bijv. de staging-Worker, die geen productieherkomst heeft).
+const verwIdx = process.argv.indexOf('--expect-worker-commit');
+const verwachteWorkerCommit = verwIdx < 0 ? null : process.argv[verwIdx + 1];
+if (verwIdx >= 0 && !/^[0-9a-f]{40}$/.test(verwachteWorkerCommit || '')) {
+  console.error('Ongeldige verwachte Worker-commit');
+  process.exit(2);
+}
 const wi = process.argv.indexOf('--worker');
 const WORKER = wi > 0 ? process.argv[wi + 1] : 'kantoorinzicht', PAGES = 'kantoorinzicht-frontend';
 const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_'))); delete env.CLOUDFLARE_API_TOKEN; // geen geërfde GIT_DIR: git -C <spiegel> moet echt de spiegel lezen // zelfde OAuth-aanmelding als de andere scripts
@@ -55,6 +61,9 @@ function controleerWorker() {
   const basis = { onderdeel: 'worker', versie: vid, aangemaakt: v.metadata && v.metadata.created_on };
   if (!commit) return { ...basis, ok: false, reden: 'Draaiende Worker-versie is niet herleidbaar: geen commit-tag en geen GitHub-tag prod-backend-*-' + vid.slice(0, 8) + '.' };
   if (!opMain('backend', commit)) return { ...basis, ok: false, commit, bron, reden: 'Commit staat niet in de geschiedenis van backend-main op GitHub.' };
+  if (verwachteWorkerCommit && commit !== verwachteWorkerCommit) {
+    return { ...basis, ok: false, commit, bron, reden: 'Actieve Worker-commit wijkt af van de verwachte releasecommit ' + verwachteWorkerCommit + '.' };
+  }
   const voor = Number(git('backend', 'rev-list', '--count', commit + '..main'));
   const zelfdeBoom = git('backend', 'rev-parse', commit + '^{tree}') === git('backend', 'rev-parse', 'main^{tree}');
   return { ...basis, ok: true, commit, bron, main: git('backend', 'rev-parse', '--short', 'main'), main_vooruit: voor, main_inhoud_gelijk: zelfdeBoom };
