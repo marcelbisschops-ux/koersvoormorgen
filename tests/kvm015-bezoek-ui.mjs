@@ -197,6 +197,15 @@ ctx.bvZet('tekst', 'x');
 ok(posts.filter((p) => p.url.indexOf('/bezoek/concept') >= 0).length === voorConcept && JSON.parse(opslag[ctx.BV.conceptVak])[ctx.BV.f.sleutel].f.modus === 'traject', 'begeleider: concept alleen op dit apparaat (geen crm-concept)');
 antwoorden.push({ status: 200, json: { ok: true, nieuw: true, acties: [{ titel: 'Informatie opvragen' }] } });
 ctx.bvOpslaan(); await wacht(); await wacht();
+const vorigeTrajectSessie = ctx.S;
+ctx.S = { ...vorigeTrajectSessie };
+const voorTrajectWissel = posts.length;
+ok((await ctx.bvApi('POST', '/mna/bezoek/opslaan/SYNTA1', {})).status === 401
+  && posts.length === voorTrajectWissel, 'nieuw M&A-sessieobject blokkeert een oud bezoekvenster');
+ctx.S = vorigeTrajectSessie;
+const bronUitloggen = fs.readFileSync(path.join(ROOT, 'mna/02-state-opslag-documenten.js'), 'utf8');
+ok(/function uitloggen\(\)\{\s*if\(typeof bvSluit==='function'\) bvSluit\(\)/.test(bronUitloggen),
+  'M&A-uitloggen verwijdert het bezoekvenster vóór de sessiereset');
 const dossierVak = await ctx.bvConceptVak({ opts: { modus: 'traject', sleutel: 'TUSSEN-SYNTH' } }, { traject: { id: 'SYNTA1' } });
 const anderDossierVak = await ctx.bvConceptVak({ opts: { modus: 'traject', sleutel: 'TUSSEN-SYNTH' } }, { traject: { id: 'SYNTA2' } });
 const andereSessieVak = await ctx.bvConceptVak({ opts: { modus: 'traject', sleutel: 'TUSSEN-ANDERS' } }, { traject: { id: 'SYNTA1' } });

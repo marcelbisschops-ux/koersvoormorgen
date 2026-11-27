@@ -3126,6 +3126,7 @@ async function refreshData(){
 }
 
 function uitloggen(){
+  if(typeof bvSluit==='function') bvSluit();
   clearTimeout(S.saveTimer);
   if(S.code&&S.screen==='main')saveAll();
   secAuditLog('logout');

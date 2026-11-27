@@ -20,11 +20,17 @@ function bvPad(soort) {
   if (bvTraject()) { var c = encodeURIComponent(BV.opts.code); return { context: '/mna/bezoek/context/' + c, opslaan: '/mna/bezoek/opslaan/' + c, voorstel: '/mna/bezoek/voorstel/' + c }[soort]; }
   return { context: '/gebruikers/crm/bezoek/context', opslaan: '/gebruikers/crm/bezoek', voorstel: '/gebruikers/crm/bezoek/voorstel', concept: '/gebruikers/crm/bezoek/concept' }[soort];
 }
-function bvApi(methode, pad, body) {
-  if (BV && !bvTraject() && BV.crmToken !== G.token) return Promise.resolve({ status: 401, json: { error: 'Open het bezoekverslag opnieuw vanuit je huidige sessie.' } });
+function bvVensterActueel(venster) {
+  if (!venster || BV !== venster) return false;
+  if (venster.opts.modus !== 'traject') return venster.crmToken === G.token;
+  return typeof S !== 'undefined' && S === venster.trajectSessie && S.traject
+    && S.traject.id === venster.opts.code && (S._bgKey || S.code || '') === venster.opts.sleutel;
+}
+function bvApi(methode, pad, body, timeout) {
+  if (!bvVensterActueel(BV)) return Promise.resolve({ status: 401, json: { error: 'Open het bezoekverslag opnieuw vanuit je huidige sessie.' } });
   var opts = { method: methode, headers: bvTraject() ? { 'x-tussen-key': BV.opts.sleutel || '' } : { 'x-gebruiker-token': G.token }, cache: 'no-store' };
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-  return fetchMetTimeout(WORKER + pad, opts, 20000).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, json: j || {} }; }); })
+  return fetchMetTimeout(WORKER + pad, opts, timeout || 20000).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, json: j || {} }; }); })
     .catch(function () { return { status: 0, json: { error: 'Geen verbinding.' } }; });
 }
 function bvNuLokaal() { var d = new Date(); d.setSeconds(0, 0); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
@@ -107,14 +113,14 @@ function bvOpen(vooraf, opts) {
   bvCss();
   opts = opts || {};
   bvSluit();
-  var venster = BV = { opts: opts, crmToken: opts.modus === 'traject' ? null : G.token, f: bvLeegFormulier(vooraf, opts), ctx: null, orgs: [], contacten: [], briefing: null, melding: null, bezig: false, suggesties: null, contactSuggesties: null, conflicten: null, voorstel: null, bewaardOp: null, timer: null, laden: true };
+  var venster = BV = { opts: opts, crmToken: opts.modus === 'traject' ? null : G.token, trajectSessie: opts.modus === 'traject' ? S : null, f: bvLeegFormulier(vooraf, opts), ctx: null, orgs: [], contacten: [], briefing: null, melding: null, bezig: false, suggesties: null, contactSuggesties: null, conflicten: null, voorstel: null, bewaardOp: null, timer: null, laden: true };
   bvTeken();
   var ctxLaden = bvApi('GET', bvPad('context'));
   var orgsLaden = bvTraject() ? Promise.resolve({ status: 200, json: [] }) : bvApi('GET', '/gebruikers/crm/organisaties');
   Promise.all([ctxLaden, orgsLaden]).then(async function (r) {
-    if (BV !== venster || (!bvTraject() && venster.crmToken !== G.token)) return;
+    if (!bvVensterActueel(venster)) return;
     if (r[0].status === 200) venster.conceptVak = await bvConceptVak(venster, r[0].json);
-    if (BV !== venster || (!bvTraject() && venster.crmToken !== G.token)) return;
+    if (!bvVensterActueel(venster)) return;
     BV.laden = false;
     if (r[0].status !== 200) { BV.geblokkeerd = r[0].json.error || 'Het bezoekverslag is nu niet beschikbaar.'; bvTeken(); return; }
     BV.ctx = r[0].json; BV.orgs = Array.isArray(r[1].json) ? r[1].json : [];
@@ -138,10 +144,10 @@ function bvGewijzigd() {
   if (BV.timer) clearTimeout(BV.timer);
   if (bvTraject()) { var st = ge('bv-status'); if (st) st.textContent = lokaal ? 'Concept staat op dit apparaat' : 'Concept kan hier niet lokaal worden bewaard'; return; }
   BV.timer = setTimeout(function () {
-    if (BV !== venster) return;
+    if (!bvVensterActueel(venster)) return;
     var f = BV.f;
     bvApi('POST', '/gebruikers/crm/bezoek/concept', { sleutel: f.sleutel, data: f }).then(function (r) {
-      if (BV !== venster || BV.f.sleutel !== f.sleutel) return;
+      if (!bvVensterActueel(venster) || BV.f.sleutel !== f.sleutel) return;
       var el = ge('bv-status'); BV.bewaardOp = r.status === 200 ? Date.now() : null;
       if (el) el.textContent = r.status === 200 ? 'Concept bewaard' : (lokaal ? 'Concept staat op dit apparaat; de server wordt later bijgewerkt' : 'Concept is alleen in dit scherm beschikbaar');
     });
@@ -171,7 +177,7 @@ function bvAndereOrg() { BV.f.organisatie_id = ''; BV.f.organisatie_naam = ''; B
 function bvLaadContacten() {
   var venster = BV, id = BV.f.organisatie_id; if (!id) return;
   bvApi('GET', '/gebruikers/crm/bezoek/briefing/' + encodeURIComponent(id)).then(function (r) {
-    if (BV !== venster || BV.f.organisatie_id !== id || BV.crmToken !== G.token) return;
+    if (!bvVensterActueel(venster) || BV.f.organisatie_id !== id || BV.crmToken !== G.token) return;
     BV.briefing = r.status === 200 ? r.json : null; BV.contacten = BV.briefing ? (BV.briefing.contactpersonen || []) : []; bvTeken();
   });
 }
@@ -203,8 +209,8 @@ function bvOpslaan(negeer) {
   BV.bezig = true; BV.melding = null; var lokaal = bvLokaalBewaar(BV.f, BV.conceptVak); bvTeken();
   var venster = BV;
   var f = BV.f, body = bvPayload(f, negeer);
-  bvMetHerhaling(function () { return BV === venster ? bvApi('POST', bvPad('opslaan'), body) : Promise.resolve({ status: 401 }); }).then(function (r) {
-    if (BV !== venster || BV.f.sleutel !== f.sleutel) return;
+  bvMetHerhaling(function () { return bvVensterActueel(venster) ? bvApi('POST', bvPad('opslaan'), body) : Promise.resolve({ status: 401 }); }).then(function (r) {
+    if (!bvVensterActueel(venster) || BV.f.sleutel !== f.sleutel) return;
     BV.bezig = false;
     if (r.status === 200) {
       bvLokaalWis(f.sleutel, venster.conceptVak);
@@ -252,14 +258,13 @@ var BV_KANS_TYPE = { 'sell-side': 'Verkoopkant', 'buy-side': 'Aankoopkant' };
 
 // ── Fase B: voorstel uit de notities, met bevestiging per onderdeel ──
 function bvVoorstelVraag() {
-  if (!BV || BV.bezig) return;
+  if (!bvVensterActueel(BV) || BV.bezig) return;
+  var venster = BV;
   if ((BV.f.tekst || '').trim().length < 20) { BV.melding = { soort: 'fout', tekst: 'Schrijf eerst wat notities; daarna kan een voorstel worden gemaakt.' }; bvTeken(); return; }
   BV.bezig = true; BV.melding = { soort: 'info', tekst: 'Voorstel wordt gemaakt...' }; bvTeken();
-  var opts = { method: 'POST', headers: bvTraject() ? { 'x-tussen-key': BV.opts.sleutel || '', 'Content-Type': 'application/json' } : { 'x-gebruiker-token': G.token, 'Content-Type': 'application/json' }, body: JSON.stringify({ tekst: BV.f.tekst }), cache: 'no-store' };
-  fetchMetTimeout(WORKER + bvPad('voorstel'), opts, 60000).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, json: j || {} }; }); })
-    .catch(function () { return { status: 0, json: { error: 'Geen verbinding. Je verslag is ongewijzigd.' } }; })
-    .then(function (r) {
-      if (!BV) return; BV.bezig = false;
+  bvApi('POST', bvPad('voorstel'), { tekst: BV.f.tekst }, 60000).then(function (r) {
+      if (!bvVensterActueel(venster)) return;
+      BV.bezig = false;
       if (r.status === 200 && r.json.voorstel) { BV.voorstel = r.json.voorstel; BV.voorstelKeus = {}; BV.melding = null; }
       else BV.melding = { soort: 'fout', tekst: r.json.error || 'Het voorstel kon nu niet worden gemaakt. Je verslag is ongewijzigd.' };
       bvTeken();
