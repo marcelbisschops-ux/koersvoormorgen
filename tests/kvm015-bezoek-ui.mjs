@@ -67,7 +67,7 @@ ok(ctx.BV.f.traject_id === 'synt1' || ctx.BV.f.traject_id === 'SYNT1', 'mandaat 
 ctx.bvZoek('bakk');
 ok(ctx.bvOrgLijstHtml().includes('Synth Bakkerij') && ctx.bvOrgLijstHtml().includes('+ Nieuwe relatie: bakk'), 'zoeken toont treffer en de keuze voor een nieuwe relatie');
 ctx.bvKies('gesprek_type', 'Kennismaking');
-antwoorden.push({ status: 200, json: { ok: true } }, { status: 200, json: { contactpersonen: [{ id: 'c9', naam: 'Synth Persoon' }] } }); // eerst de concept-autosave, dan de contactpersonen
+antwoorden.push({ status: 200, json: { ok: true } }, { status: 200, json: { ok: true, organisatie: { id: 'org9', naam: 'Synth Bakkerij' }, contactpersonen: [{ id: 'c9', naam: 'Synth Persoon' }], gesprekken: [{ id: 'g1', gesprek_type: 'Intake', resultaat: 'Positief', gesprek_op: 1, tekst: X, vervolgacties: [X] }], open_taken: [{ id: 't1', titel: X, eigenaar_naam: 'Synth', deadline: '2026-12-01' }], kansen: [{ id: 'k1', type: 'sell-side', fase: 'in_gesprek', omschrijving: X }] } }); // eerst de concept-autosave, dan de briefing
 ctx.bvKiesOrg('org9'); await wacht();
 ok(ctx.BV.f.organisatie_id === 'org9' && el['bv-overlay'].innerHTML.includes('Synth Persoon'), 'relatie gekozen en contactpersonen geladen');
 ok(JSON.parse(opslag['kvm-bezoek-concepten'])[ctx.BV.f.sleutel].f.organisatie_id === 'org9', 'elke wijziging staat direct lokaal');
@@ -79,6 +79,7 @@ antwoorden.push({ netwerk: true });
 ctx.bvOpslaan(); await wacht(); await wacht();
 h = el['bv-overlay'].innerHTML;
 ok(/veilig bewaard op dit apparaat/.test(h) && JSON.parse(opslag['kvm-bezoek-concepten'])[sleutel], 'storing: melding, scherm blijft open en concept blijft lokaal');
+ctx.bvAndereOrg(); ctx.BV.f.zoek = 'Synth Nieuwe Relatie'; ctx.bvNieuweOrg();
 antwoorden.push({ status: 409, json: { code: 'MOGELIJK_DUPLICAAT', error: 'Deze relatie lijkt al te bestaan.', suggesties: [{ id: 'org9', naam: X, redenen: ['vergelijkbare naam'] }] } });
 ctx.bvOpslaan(); await wacht(); await wacht();
 h = el['bv-overlay'].innerHTML;
@@ -111,5 +112,92 @@ ok(adv.indexOf('<script src="adv-werkruimte.js"></script>') < adv.indexOf('<scri
 ok((adv.match(/bvStartKnop\(/g) || []).length === 2, 'startknop op het dashboard en bij een mandaat');
 ok(/Bezoekverslag \(Quick Visit\)/.test(adv) && /Bezoekverslag \(Quick Visit\)/.test(hb), 'handleiding bijgewerkt in adv.html en mna/08-handleiding.js');
 ok(!/—/.test(fs.readFileSync(path.join(ROOT, 'adv-bezoek.js'), 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')), 'geen gedachtestreepje in zichtbare teksten');
+
+// ── Fase C: briefing, pijplijn, relatiegegevens met conflictkeuze (crm-ingang) ──
+antwoorden = [{ status: 200, json: Object.assign({}, context, { kans_fasen: ['nieuw', 'in_gesprek', 'onderhandeling'], ai: true, transcriptie: { beschikbaar: false } }) }, { status: 200, json: [{ id: 'org9', naam: 'Synth Bakkerij' }] }];
+ctx.bvOpen({}); await wacht(); await wacht();
+antwoorden.push({ status: 200, json: { ok: true } }, { status: 200, json: { ok: true, organisatie: { id: 'org9', naam: 'Synth Bakkerij' }, contactpersonen: [], gesprekken: [{ id: 'g1', gesprek_type: 'Intake', resultaat: 'Positief', gesprek_op: 1, tekst: X, vervolgacties: [X] }], open_taken: [{ id: 't1', titel: X, eigenaar_naam: 'Synth', deadline: '2026-12-01' }], kansen: [{ id: 'k1', type: 'sell-side', fase: 'in_gesprek', omschrijving: X }] } });
+ctx.bvKiesOrg('org9'); await wacht();
+h = el['bv-overlay'].innerHTML;
+ok(h.includes('Briefing: wat speelde er al') && h.includes('Afgesproken:') && h.includes('Open taken') && h.includes('Verkoopkant, fase In gesprek') && !h.includes('<img'), 'briefing toont eerdere gesprekken, afspraken, open taken en kansen, ge-escaped');
+ok(h.includes('Pijplijn') && h.includes('Fase bijwerken: Verkoopkant (nu In gesprek)') && h.includes('Gegevens van de relatie bijwerken'), 'pijplijn en relatiegegevens zichtbaar bij een bestaande relatie');
+ok(!/Inspreken/.test(h) && h.includes('Voorstel uit notities'), 'geen opnameknop zolang er geen dienst is gekozen; voorstelknop wel');
+ctx.bvKies('gesprek_type', 'Intake');
+let pl = ctx.bvPayload(ctx.BV.f);
+ok(!pl.kans && !pl.profiel, 'zonder keuze geen kans en geen profielwijziging in de payload');
+ctx.bvKansZet('k1'); ctx.bvZetSub('kans', 'fase', 'onderhandeling');
+ctx.bvZetSub('profiel', 'plaats', 'Synthdorp');
+pl = ctx.bvPayload(ctx.BV.f);
+ok(pl.kans.actie === 'fase' && pl.kans.opportunity_id === 'k1' && pl.kans.fase === 'onderhandeling' && pl.profiel.plaats === 'Synthdorp' && !pl.profiel_bevestigd, 'payload: fase bestaande kans en profielveld, nog zonder bevestiging');
+ctx.bvKansZet('nieuw');
+ok(ctx.bvValideer(ctx.BV.f) === 'Kies of de kans aan de verkoop- of aankoopkant zit.', 'nieuwe kans vraagt de kant (nooit gokken)');
+ctx.bvZetSub('kans', 'type', 'buy-side');
+ok(ctx.bvPayload(ctx.BV.f).kans.type === 'buy-side' && ctx.bvPayload(ctx.BV.f).kans.fase === 'nieuw', 'nieuwe kans aan de aankoopkant, fase nieuw');
+antwoorden.push({ status: 409, json: { code: 'PROFIEL_CONFLICT', error: 'De relatie heeft al andere gegevens.', conflicten: [{ veld: 'plaats', huidig: X, nieuw: 'Synthdorp' }] } });
+ctx.bvOpslaan(); await wacht(); await wacht();
+h = el['bv-overlay'].innerHTML;
+ok(h.includes('Welke gegevens kloppen?') && h.includes('Gebruik Synthdorp') && h.includes('Houd &lt;img'), 'conflict: beide waarden met keuze, ge-escaped');
+ctx.bvConflictKies('plaats', true);
+ok(ctx.bvPayload(ctx.BV.f).profiel_bevestigd.join() === 'plaats', 'gekozen nieuwe waarde wordt als bevestigd meegestuurd');
+ctx.bvConflictKies('plaats', false);
+ctx.BV.conflicten = [{ veld: 'plaats', huidig: 'A', nieuw: 'B' }]; ctx.bvConflictKies('plaats', false);
+ok(!ctx.bvPayload(ctx.BV.f).profiel && ctx.BV.f.profiel_bevestigd.length === 0, 'huidige waarde houden: veld niet meer meegestuurd');
+antwoorden.push({ status: 409, json: { code: 'KVK_IN_GEBRUIK', error: 'Dit KvK-nummer hoort bij een andere relatie.', suggesties: [{ id: 'org8', naam: 'Synth Ander' }] } });
+ctx.bvOpslaan(); await wacht(); await wacht();
+ok(el['bv-overlay'].innerHTML.includes('Gebruik Synth Ander') && el['bv-overlay'].innerHTML.includes('zelfde KvK-nummer') && !el['bv-overlay'].innerHTML.includes('Nee, dit is een nieuwe relatie'), 'KvK-nummer in gebruik: andere relatie voorgesteld, geen samenvoegen');
+
+// ── Fase B: voorstel met bevestiging per onderdeel ──
+ctx.BV.f.tekst = 'kort';
+ctx.bvVoorstelVraag();
+ok(/eerst wat notities/.test(el['bv-overlay'].innerHTML) && !posts.some((p) => p.url.endsWith('/voorstel')), 'te weinig tekst: geen aanvraag');
+ctx.BV.f.tekst = 'Synth notities over een kennismaking met de DGA die volgend jaar wil verkopen.';
+antwoorden.push({ status: 200, json: { ok: true, voorstel: { samenvatting: X, gesprek_type: 'Kennismaking', resultaat: 'Positief', perspectief: null, vervolgacties: [{ soort: 'Terugbellen', omschrijving: 'prijs', deadline: '2026-12-03' }] } } });
+ctx.bvVoorstelVraag(); await wacht(); await wacht();
+const vp = posts.filter((p) => p.url.endsWith('/gebruikers/crm/bezoek/voorstel')).pop();
+h = el['bv-overlay'].innerHTML;
+ok(vp && vp.opts.headers['x-gebruiker-token'] === 'tok' && h.includes('vink aan wat je wilt overnemen') && !h.includes('<img') && !h.includes('Commercieel perspectief: <strong>'), 'voorstel getoond (ge-escaped), alleen gevulde onderdelen');
+ok(ctx.BV.f.gesprek_type === 'Intake', 'voorstel verandert niets zolang niet is bevestigd');
+ctx.bvVoorstelVink('gesprek_type', true); ctx.bvVoorstelVink('actie0', true);
+const aantalActies = ctx.BV.f.vervolgacties.length;
+ctx.bvVoorstelOvernemen();
+ok(ctx.BV.f.gesprek_type === 'Kennismaking' && ctx.BV.f.resultaat !== 'Positief' && ctx.BV.f.vervolgacties.length === aantalActies + 1 && ctx.BV.f.vervolgacties[aantalActies].deadline === '2026-12-03' && !/Samenvatting:/.test(ctx.BV.f.tekst) && ctx.BV.voorstel === null, 'alleen aangevinkte onderdelen overgenomen');
+const pure = ctx.bvVoorstelToepassen({ tekst: 'a', vervolgacties: [] }, { samenvatting: 'b', vervolgacties: [] }, { samenvatting: true }, 'U1');
+ok(pure.tekst === 'a\n\nSamenvatting: b', 'samenvatting wordt toegevoegd, niet vervangen');
+ctx.bvSluit();
+
+// ── Ingang begeleider (mna.html) ──
+ctx.S = { traject: { id: 'SYNTA1' }, _bgKey: 'TUSSEN-SYNTH' };
+antwoorden = [{ status: 200, json: { ok: true, modus: 'traject', traject: { id: 'SYNTA1', naam: X }, lijsten, eigenaren: [{ id: 'UA', naam: 'Synth Eigenaar' }], transcriptie: { beschikbaar: false }, ai: true } }];
+const voorPosts = posts.length;
+ctx.bvOpenBegeleider(); await wacht(); await wacht();
+const ctxReq = posts[voorPosts];
+ok(ctxReq.url.endsWith('/mna/bezoek/context/SYNTA1') && ctxReq.opts.headers['x-tussen-key'] === 'TUSSEN-SYNTH' && !ctxReq.opts.headers['x-gebruiker-token'], 'begeleider: context met tussencode, zonder adviseurstoken');
+h = el['bv-overlay'].innerHTML;
+ok(h.includes('Bezoekverslag · &lt;img') && h.includes('Gesproken met') && !h.includes('Relatie (verplicht)') && !h.includes('Pijplijn') && !h.includes('Alleen voor mij'), 'begeleider: titel met mandaat (ge-escaped), geen relatiekeuze of pijplijn');
+ok(ctx.bvValideer(ctx.BV.f) === 'Kies het type gesprek.', 'begeleider: alleen type gesprek verplicht');
+ctx.bvZet('deelnemers', 'Synth DGA'); ctx.bvKies('gesprek_type', 'Voortgangsgesprek'); ctx.bvActieErbij(); ctx.bvActieZet(0, 'soort', 'Informatie opvragen');
+ok(ctx.BV.f.vervolgacties[0].eigenaar_id === 'UA', 'begeleider: standaard de eerste verantwoordelijke van het mandaat');
+const tp = ctx.bvPayload(ctx.BV.f);
+ok(tp.deelnemers === 'Synth DGA' && !tp.organisatie_id && !tp.nieuwe_organisatie && !tp.zichtbaarheid && tp.vervolgacties.length === 1, 'begeleider: payload zonder relatievelden', JSON.stringify(tp));
+const voorConcept = posts.filter((p) => p.url.indexOf('/bezoek/concept') >= 0).length;
+ctx.bvZet('tekst', 'x');
+ok(posts.filter((p) => p.url.indexOf('/bezoek/concept') >= 0).length === voorConcept && JSON.parse(opslag['kvm-bezoek-concepten'])[ctx.BV.f.sleutel].f.modus === 'traject', 'begeleider: concept alleen op dit apparaat (geen crm-concept)');
+antwoorden.push({ status: 200, json: { ok: true, nieuw: true, acties: [{ titel: 'Informatie opvragen' }] } });
+ctx.bvOpslaan(); await wacht(); await wacht();
+const tsave = posts.filter((p) => p.url.endsWith('/mna/bezoek/opslaan/SYNTA1')).pop();
+ok(tsave && tsave.opts.headers['x-tussen-key'] === 'TUSSEN-SYNTH' && ctx.BV === null && ctx.toasts.indexOf('Het verslag staat in het gesprekslogboek van dit mandaat.') >= 0, 'begeleider: opgeslagen via de mandaatroute, melding gesprekslogboek');
+antwoorden = [{ status: 200, json: { ok: true, modus: 'traject', traject: { id: 'SYNTA1', naam: 'x' }, lijsten, eigenaren: [], afgesloten: true } }];
+ctx.bvOpenBegeleider(); await wacht(); await wacht();
+ok(/afgesloten/.test(el['bv-overlay'].innerHTML) && !/Opslaan/.test(el['bv-overlay'].innerHTML), 'afgesloten mandaat: melding, geen formulier');
+ctx.bvSluit();
+
+// ── Dashboardblok ──
+const dh = ctx.bvDashboardHtml({ recent: [{ organisatie_naam: X, gesprek_type: 'Intake', resultaat: 'Positief', gesprek_op: 1 }], meting: { verslagen_deze_maand: 3, vervolgacties_deze_maand: 4, open_taken: 1, mediaan_invoertijd_sec: 52 } }, [{ id: 't1', titel: X, organisatie_naam: 'Synth', deadline: '2026-12-01' }]);
+ok(dh.includes('<strong>3</strong>') && dh.includes('52 s') && dh.includes('Afgerond') && !dh.includes('<img'), 'dashboardblok: meting, open taken met afronden, ge-escaped');
+ok(ctx.bvDashboardHtml({ recent: [], meting: { mediaan_invoertijd_sec: null } }, []).includes('<strong>-</strong>'), 'invoertijd zonder meting: geen verzonnen getal');
+const mna = fs.readFileSync(path.join(ROOT, 'mna.html'), 'utf8'), m04 = fs.readFileSync(path.join(ROOT, 'mna/04-begeleider-dashboard.js'), 'utf8');
+ok(mna.indexOf('<script src="mna/08-handleiding.js"></script>') < mna.indexOf('<script src="adv-bezoek.js"></script>') && /onclick="bvOpenBegeleider\(\)"/.test(m04), 'mna.html laadt de module en het begeleidersdashboard heeft de knop');
+ok(adv.includes('<div id="bv-dashboard"></div>') && /bvDashboardBlok\(\)/.test(adv), 'dashboardblok in het adviseursportaal');
+ok(!/SpeechRecognition|webkitSpeech/.test(fs.readFileSync(path.join(ROOT, 'adv-bezoek.js'), 'utf8')), 'geen spraakherkenning van de browser');
 console.log(n + ' proeven, ' + fout + ' fout');
 process.exit(fout ? 1 : 0);

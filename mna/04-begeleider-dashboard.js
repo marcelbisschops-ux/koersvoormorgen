@@ -2253,6 +2253,8 @@ function renderBegeleiderDashboard(app){
     +'<button class="btn-ghost btn-sm" onclick="printSchermMetAkkoord(\'Begeleidersdashboard\',\'scherm_dashboard\')">&#128196; PDF</button>'
     +'<button class="btn-ghost btn-sm" onclick="uitloggen()">&#8592; Uitloggen</button>'
     +'</div></div>'
+    // KVM-015 Quick Visit: bezoekverslag direct vanaf het begeleidersdashboard (verslag in het gesprekslogboek, acties in de werkruimte).
+    +(typeof bvOpenBegeleider==='function'?'<div style="margin:0 0 1rem"><button type="button" class="btn" id="bg-bezoek-actie" onclick="bvOpenBegeleider()" style="min-height:48px;font-size:15px;padding:12px 22px">+ Bezoekverslag</button></div>':'')
     +kbTopbannerHtml
     +caHtml
     +analyseHtml
