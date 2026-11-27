@@ -161,6 +161,19 @@ function bvLaadContacten() {
 function bvContact(id, aan) { var l = BV.f.contactpersoon_ids.filter(function (x) { return x !== id; }); if (aan) l.push(id); BV.f.contactpersoon_ids = l; bvGewijzigd(); }
 
 // ── Vervolgacties ──
+function bvEigenaren() {
+  if (!bvTraject() && !BV.f.traject_id && BV.ctx.crm_eigenaren) return BV.ctx.crm_eigenaren;
+  return BV.ctx.eigenaren || [];
+}
+function bvKiesMandaat(id) {
+  BV.f.traject_id = id;
+  var eigenaren = bvEigenaren();
+  BV.f.vervolgacties.forEach(function (a) {
+    if (!eigenaren.some(function (e) { return e.id === a.eigenaar_id; })) a.eigenaar_id = '';
+  });
+  bvGewijzigd();
+  bvTeken();
+}
 function bvActieErbij() { BV.f.vervolgacties.push({ soort: '', omschrijving: '', eigenaar_id: BV.ctx && BV.ctx.gebruiker ? BV.ctx.gebruiker.id : (((BV.ctx && BV.ctx.eigenaren) || [])[0] || {}).id || '', deadline: '' }); bvGewijzigd(); bvTeken(); }
 function bvActieWeg(i) { BV.f.vervolgacties.splice(i, 1); bvGewijzigd(); bvTeken(); }
 function bvActieZet(i, veld, waarde, opnieuw) { BV.f.vervolgacties[i][veld] = waarde; bvGewijzigd(); if (opnieuw) bvTeken(); }
@@ -344,7 +357,7 @@ function bvHtml() {
   h += '<div class="field"><label>Gespreksresultaat</label>' + bvKnoppen('resultaat', L.resultaat) + '</div>';
   h += '<div class="row2"><div class="field"><label for="bv-persp">Commercieel perspectief</label>' + bvSelect('perspectief', L.perspectief, f.perspectief, 'bvZet(\'perspectief\',this.value)').replace('<select ', '<select id="bv-persp" ') + '</div>'
     + '<div class="field"><label for="bv-op">Datum en tijd</label><input id="bv-op" type="datetime-local" value="' + bvEsc(f.gesprek_op) + '" onchange="bvZet(\'gesprek_op\',this.value)"></div></div>';
-  if (!bvTraject() && (BV.ctx.trajecten || []).length) h += '<div class="field"><label for="bv-traject">Gekoppeld mandaat</label>' + bvSelect('traject', BV.ctx.trajecten, String(f.traject_id || '').toUpperCase(), 'bvZet(\'traject_id\',this.value)', 'Geen mandaat').replace('<select ', '<select id="bv-traject" ') + '</div>';
+  if (!bvTraject() && (BV.ctx.trajecten || []).length) h += '<div class="field"><label for="bv-traject">Gekoppeld mandaat</label>' + bvSelect('traject', BV.ctx.trajecten, String(f.traject_id || '').toUpperCase(), 'bvKiesMandaat(this.value)', 'Geen mandaat').replace('<select ', '<select id="bv-traject" ') + '</div>';
   h += '<div class="field"><label for="bv-tekst">Verslag in eigen woorden</label><textarea id="bv-tekst" rows="5" oninput="bvZet(\'tekst\',this.value)">' + bvEsc(f.tekst) + '</textarea>'
     + '<div class="bv-knoprij">' + (BV.ctx.ai !== false ? '<button type="button" class="btn-outline" onclick="bvVoorstelVraag()"' + (BV.bezig ? ' disabled' : '') + '>Voorstel uit notities</button>' : '') + bvInsprekenHtml() + '</div></div>';
   if (BV.voorstel) h += bvVoorstelHtml();
@@ -372,7 +385,7 @@ function bvHtml() {
     var geen = a.soort === 'Geen actie';
     h += '<div class="bv-actie"><div class="row2"><div class="field"><label for="bv-a' + i + '">Actie</label>' + bvSelect('soort', L.vervolgactie, a.soort, 'bvActieZet(' + i + ',\'soort\',this.value,true)').replace('<select ', '<select id="bv-a' + i + '" ') + '</div>'
       + (geen ? '' : '<div class="field"><label for="bv-ao' + i + '">Toelichting' + (a.soort === 'Eigen actie' ? ' (verplicht)' : '') + '</label><input id="bv-ao' + i + '" maxlength="160" value="' + bvEsc(a.omschrijving) + '" oninput="bvActieZet(' + i + ',\'omschrijving\',this.value)"></div>') + '</div>'
-      + (geen ? '' : '<div class="row2"><div class="field"><label for="bv-ae' + i + '">Verantwoordelijke</label>' + bvSelect('eigenaar', BV.ctx.eigenaren, a.eigenaar_id, 'bvActieZet(' + i + ',\'eigenaar_id\',this.value)').replace('<select ', '<select id="bv-ae' + i + '" ') + '</div>'
+      + (geen ? '' : '<div class="row2"><div class="field"><label for="bv-ae' + i + '">Verantwoordelijke</label>' + bvSelect('eigenaar', bvEigenaren(), a.eigenaar_id, 'bvActieZet(' + i + ',\'eigenaar_id\',this.value)').replace('<select ', '<select id="bv-ae' + i + '" ') + '</div>'
       + '<div class="field"><label for="bv-ad' + i + '">Deadline</label><input id="bv-ad' + i + '" type="date" value="' + bvEsc(a.deadline) + '" onchange="bvActieZet(' + i + ',\'deadline\',this.value)"></div></div>')
       + '<button type="button" class="btn-outline sm" onclick="bvActieWeg(' + i + ')">Actie verwijderen</button></div>';
   });
