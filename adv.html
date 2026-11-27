@@ -681,6 +681,19 @@ function renderDashboard(){
       <div style="margin-bottom:1rem">${typeof bvStartKnop==='function'?bvStartKnop({}):''}</div>
       <div id="bv-dashboard"></div>
       <div id="wr-vandaag"></div>
+      <section class="card" aria-labelledby="km-titel" style="margin-bottom:1rem">
+        <div class="card-hdr"><h2 class="card-title" id="km-titel">Zoekopdrachten</h2>
+          <button class="btn-outline" id="km-open-form" type="button">+ Nieuwe zoekopdracht</button></div>
+        <form id="km-form" hidden style="padding:0 1rem 1rem">
+          <div class="field"><label for="km-koper">Naam koper</label><input id="km-koper" name="koper_naam" maxlength="200" required></div>
+          <div class="field"><label for="km-sector">Gezochte sectoren</label><input id="km-sector" name="zoekt_sectoren" maxlength="500"></div>
+          <div class="field"><label for="km-regio">Gezochte regio</label><input id="km-regio" name="zoekt_regio" maxlength="200"></div>
+          <button class="btn btn-sm" type="submit">Zoekopdracht aanmaken</button>
+        </form>
+        <p id="km-melding" role="status" style="margin:0 1rem .75rem"></p>
+        <div class="table-wrap"><table><thead><tr><th>Koper</th><th>Sector</th><th>Regio</th><th>Status</th><th></th></tr></thead>
+          <tbody id="km-lijst"></tbody></table></div>
+      </section>
       <div class="stats">
         <div class="stat"><div class="stat-n">${G.trajecten.length}</div><div class="stat-l">Trajecten</div></div>
         <div class="stat"><div class="stat-n">${actief}</div><div class="stat-l">Actief</div></div>
@@ -704,8 +717,67 @@ function renderDashboard(){
       </div>
     </div>
   `);
+  toonZoekopdrachten();
   if(typeof wrVandaag==='function')wrVandaag();
   if(typeof bvDashboardBlok==='function')bvDashboardBlok();
+}
+
+function toonZoekopdrachten() {
+  var token=G.token, lijst=ge('km-lijst'), formulier=ge('km-form'), melding=ge('km-melding');
+  if(!token || !lijst) return;
+  function actueel(){return token===G.token && lijst===ge('km-lijst');}
+  async function vraag(pad, body){
+    var opts={headers:{'x-gebruiker-token':token},cache:'no-store'};
+    if(body){
+      opts.method='POST';
+      opts.headers['Content-Type']='application/json';
+      opts.body=JSON.stringify(body);
+    }
+    var r=await fetchMetTimeout(WORKER+pad,opts,15000);
+    var d=await r.json();
+    if(!r.ok || !d.ok) throw new Error(d.message || d.error || 'De zoekopdracht kon niet worden geladen.');
+    return d;
+  }
+  async function laad(){
+    melding.textContent='Zoekopdrachten laden…';
+    try {
+      var d=await vraag('/adviseur/koopmandaten');
+      if(!actueel()) return;
+      lijst.replaceChildren();
+      melding.textContent=d.koopmandaten.length ? '' : 'Nog geen zoekopdrachten.';
+      d.koopmandaten.forEach(function(m){
+        var rij=lijst.insertRow();
+        [m.koper_naam,m.zoekt_sectoren,m.zoekt_regio,m.status].forEach(function(v){rij.insertCell().textContent=v||'—';});
+        var open=document.createElement('button');
+        open.className='btn-outline';open.type='button';open.textContent='Openen';
+        open.setAttribute('aria-label','Openen: '+m.koper_naam);
+        open.onclick=async function(){
+          if(!actueel()) return;
+          open.disabled=true;
+          try {
+            var d=await vraag('/adviseur/koopmandaten/'+encodeURIComponent(m.id));
+            if(actueel() && /^T[A-Z0-9]{7}$/.test(d.login_code)) location.assign(p1cMnaUrl(d.login_code,WORKER,_WORKER_WHITELIST[1]));
+          } catch(e){if(actueel()) melding.textContent=e.message;}
+          finally {if(actueel()) open.disabled=false;}
+        };
+        rij.insertCell().appendChild(open);
+      });
+    } catch(e){if(actueel()) melding.textContent=e.message;}
+  }
+  ge('km-open-form').onclick=function(){formulier.hidden=!formulier.hidden;if(!formulier.hidden)ge('km-koper').focus();};
+  formulier.onsubmit=async function(e){
+    e.preventDefault();
+    if(!actueel()) return;
+    var knop=formulier.querySelector('button[type=submit]');
+    if(knop.disabled) return;
+    knop.disabled=true;
+    try {
+      await vraag('/adviseur/koopmandaat/create',Object.fromEntries(new FormData(formulier)));
+      if(actueel()){formulier.reset();formulier.hidden=true;await laad();}
+    } catch(e){if(actueel()) melding.textContent=e.message;}
+    finally {if(actueel()) knop.disabled=false;}
+  };
+  laad();
 }
 
 // ===== HANDLEIDING (achter login, alle rollen in één pagina) =====
