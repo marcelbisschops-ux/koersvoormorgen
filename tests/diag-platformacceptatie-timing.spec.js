@@ -58,7 +58,7 @@ test.describe('DIAGNOSE · Platformacceptatie-timing (eenmalig, staging-only, te
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: trajectData } });
     if (!c.json || !c.json.ok) return;
     trajectCode = c.json.code;
-    verkoperCode = c.json.code;
+    verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
     koperCode = c.json.koper_code;
     tussenCode = c.json.tussen_code;
     setupOk = true;

@@ -333,7 +333,7 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: trajectData } });
     if (!c.json || !c.json.ok) return;
     trajectCode = c.json.code;
-    verkoperCode = c.json.code;
+    verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
     koperCode = c.json.koper_code;
     tussenCode = c.json.tussen_code;
 
@@ -363,7 +363,7 @@ test.describe('KANTOORINZICHT 3-ROLLEN E2E', () => {
     }) } });
     if (c2.json && c2.json.ok) {
       pvwTraject = c2.json.code;
-      pvwCodes = { verkoper: c2.json.code, koper: c2.json.koper_code, tussenpersoon: c2.json.tussen_code };
+      pvwCodes = { verkoper: c2.json.verkoper_inlogcode || c2.json.code, koper: c2.json.koper_code, tussenpersoon: c2.json.tussen_code };
       await api('POST', '/mna/vok/teken', { body: { code: pvwCodes.tussenpersoon, naam: 'E2E Test', versie: VOK_VERSIE, email } });
       pvwSetupOk = !!(pvwCodes.koper && pvwCodes.tussenpersoon);
     }
