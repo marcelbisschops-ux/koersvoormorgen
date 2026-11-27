@@ -42,6 +42,10 @@ function fmtGeldKort(n){
 // (4 → "4×", 5,5 → "5,5×", 5,05 → "5,05×"); met `decimalen`: vast aantal (fmtMultiple(5.5,2) → "5,50×").
 // Leeg/ongeldig → "—". Alleen weergave: de rekenkern rekent met het onderliggende getal. marilyn.html heeft een
 // identieke kopie (laadt mna/03 niet); tests/kvm005-getalnotatie.mjs bewaakt dat beide gelijk blijven.
+// KVM-005 (27-11-2026): percentages en decimale getallen in NL-notatie (komma), één centrale presentatiehelper; de
+// onderliggende numerieke waarden en exports (CSV, interne cijferlijst) blijven ongewijzigd.
+function fmtDec(n,decimalen){if(n===null||n===undefined||n===''||isNaN(n))return '—';var d=typeof decimalen==='number'?decimalen:1;return Number(n).toLocaleString('nl-NL',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fmtPct(n,decimalen){var t=fmtDec(n,decimalen);return t==='—'?t:t+'%';}
 function fmtMultiple(n,decimalen){if(n===null||n===undefined||n===''||isNaN(n))return '—';var vast=typeof decimalen==='number';return Number(n).toLocaleString('nl-NL',{minimumFractionDigits:vast?decimalen:0,maximumFractionDigits:vast?decimalen:2})+'\u00d7';}
 // Zelfde als parseGeld, maar geeft null terug als het veld niet is ingevuld (i.p.v. 0) — nodig voor
 // de financiële ratio's hieronder, waar 0 een geldige uitkomst kan zijn (bijv. geen schuld) en dus
@@ -1050,7 +1054,7 @@ function dvTabelBiedingVergelijking(v){
   html+='<p style="font-size:10pt;color:#5a5854;margin:.25rem 0 .5rem">Hoogste totaalscore: <strong>'+esc(top.naam)+'</strong> ('+top.totaal+'), daarna '+esc(tweede.naam)+' ('+tweede.totaal+'). Dit is een ordening met een <strong>vaste weging</strong> (prijs 30% / zekerheid cash 25% / deal-zekerheid 20% / strategische fit 15% / timing 10%), geen keuze. Weeg de assen ook zelf tegen de prioriteiten van de verkoper — hecht die bijvoorbeeld meer aan zekerheid dan aan de hoogste prijs, dan kan de feitelijke voorkeur afwijken van deze volgorde.</p>';
   var somW=B.filter(function(b){return b.somWaarschuwing;}).map(function(b){return b.naam;});
   if(somW.length) html+='<p style="font-size:9pt;color:#c0392b;margin:0 0 .5rem">De betaalstructuur van de koopsom (cash % + escrow % + earn-out %) telt niet op tot ~100% bij: '+esc(somW.join(', '))+'. Controleer die drie percentages (behouden belang telt hier niet mee — dat is geen betaling van de koper).</p>';
-  if(v.evSpreidWaarschuwing) html+='<p style="font-size:9pt;color:#c0392b;margin:0 0 .5rem">De koopsommen liggen ver uiteen (factor '+v.evSpreidFactor.toFixed(1)+'). Controleer of beide biedingen op hetzelfde belang in dezelfde onderneming slaan en of voor elk traject een dealvoorstel is gegenereerd — anders vergelijkt de matrix ongelijke grootheden.</p>';
+  if(v.evSpreidWaarschuwing) html+='<p style="font-size:9pt;color:#c0392b;margin:0 0 .5rem">De koopsommen liggen ver uiteen (factor '+fmtDec(v.evSpreidFactor,1)+'). Controleer of beide biedingen op hetzelfde belang in dezelfde onderneming slaan en of voor elk traject een dealvoorstel is gegenereerd — anders vergelijkt de matrix ongelijke grootheden.</p>';
   var behOng=B.filter(function(b){return b.behoudenOngeldig;}).map(function(b){return b.naam;});
   if(behOng.length) html+='<p style="font-size:9pt;color:#c0392b;margin:0 0 .5rem">Ongeldig percentage behouden belang (0–99 verwacht) bij: '+esc(behOng.join(', '))+'. Bij 100% of meer is er geen verkocht belang om de koopsom aan toe te rekenen — de regel "Behouden belang" toont daarom n.v.t. Controleer de invoer.</p>';
   html+='<div style="font-size:9pt;color:#8a8880;font-style:italic">De euro-bedragen zijn een rechtstreekse herrekening van de per bod ingevoerde percentages. Financieringszekerheid, het aantal opschortende voorwaarden en de strategische fit zijn inschattingen van de begeleider — geen platformoordeel. Uitsluitend voor de verkoper en de begeleider.</div>';
@@ -1141,7 +1145,7 @@ function dvTabelSynergie(syn){
 function dvTabelScenarios(scenarios,p){
   if(!scenarios)return '';
   var grLabel=((scenarios[0]&&scenarios[0].grondslag==='omzet')||p.grondslag==='omzet')?'Omzet':'EBITDA';
-  var rows=scenarios.map(function(s){return [s.label,s.groeiPct.toFixed(1)+'%/jaar',dvMln(s.ebitdaEind),dvMln(s.waardeLaag)+' – '+dvMln(s.waardeHoog)];});
+  var rows=scenarios.map(function(s){return [s.label,fmtPct(s.groeiPct,1)+'/jaar',dvMln(s.ebitdaEind),dvMln(s.waardeLaag)+' – '+dvMln(s.waardeHoog)];});
   var html=dvRenderTabelHtml(['Scenario','Groeivoet',grLabel+' na '+p.horizonJaren+' jaar','Ondernemingswaarde (€ mln)'],rows);
   html+='<div style="font-size:12px;color:var(--muted);padding:.6rem .75rem;background:var(--card);border-radius:6px;margin-top:-.75rem">'
     +'Downside/upside wijken '+p.scenarioGroeiDeltaPct+' procentpunt af van de basis-groeivoet ('+p.groeiPct+'%/jaar) — zelf ingestelde bandbreedte, geen vastgestelde norm.'
@@ -1498,9 +1502,9 @@ function dvBerekenDCFGevoeligheid(p,schuldafbouwRows){
   return {waccWaarden:waccWaarden,groeiWaarden:groeiWaarden,matrix:matrix};
 }
 function dvTabelDCFGevoeligheid(gv){
-  var kolommen=['WACC \\ Groeivoet'].concat(gv.groeiWaarden.map(function(g){return g.toFixed(1)+'%';}));
+  var kolommen=['WACC \\ Groeivoet'].concat(gv.groeiWaarden.map(function(g){return fmtPct(g,1)+'';}));
   var rows=gv.matrix.map(function(rij,i){
-    return [gv.waccWaarden[i].toFixed(1)+'%'].concat(rij.map(function(v){return v!==null?dvMln(v):'n.v.t. (WACC ≤ groei)';}));
+    return [fmtPct(gv.waccWaarden[i],1)+''].concat(rij.map(function(v){return v!==null?dvMln(v):'n.v.t. (WACC ≤ groei)';}));
   });
   return dvRenderTabelHtml(kolommen,rows);
 }
@@ -1938,10 +1942,10 @@ function dvBerekenWaardering(){
 // waarderingsscherm niet vervuild raakt met een rij nullen bij een net gestart traject.
 function dvIndicatorenRij(v){
   var items=[
-    {label:'Recurring omzet',val:v.recurring,fmt:function(x){return x.toFixed(1)+'%';}},
-    {label:'Klantverloop (churn)',val:v.churn,fmt:function(x){return x.toFixed(1)+'%';}},
-    {label:'Grootste klant',val:v.top1pct,fmt:function(x){return x.toFixed(1)+'%';}},
-    {label:'Top 10 klanten',val:v.top10pct,fmt:function(x){return x.toFixed(1)+'%';}},
+    {label:'Recurring omzet',val:v.recurring,fmt:function(x){return fmtPct(x,1)+'';}},
+    {label:'Klantverloop (churn)',val:v.churn,fmt:function(x){return fmtPct(x,1)+'';}},
+    {label:'Grootste klant',val:v.top1pct,fmt:function(x){return fmtPct(x,1)+'';}},
+    {label:'Top 10 klanten',val:v.top10pct,fmt:function(x){return fmtPct(x,1)+'';}},
     {label:'Aantal klanten',val:v.aantalKlanten,fmt:function(x){return Math.round(x).toLocaleString('nl-NL');}},
     {label:'Totaal FTE',val:v.fte,fmt:function(x){return x.toLocaleString('nl-NL');}},
     {label:'Aantal partners',val:v.aantalP,fmt:function(x){return Math.round(x).toLocaleString('nl-NL');}},
@@ -1949,19 +1953,19 @@ function dvIndicatorenRij(v){
     {label:v.partnerBelLabel||'Eigenaar-/partnerbeloning',val:v.partnerBel,fmt:fmtGeld},
     {label:'Debiteuren',val:v.debiteuren,fmt:fmtGeld},
     {label:'Onderhanden werk',val:v.wip,fmt:fmtGeld},
-    {label:'Declarabiliteit',val:v.declarab,fmt:function(x){return x.toFixed(1)+'%';}}
+    {label:'Declarabiliteit',val:v.declarab,fmt:function(x){return fmtPct(x,1)+'';}}
   ].filter(function(it){return it.val&&it.val>0;});
   // Klassieke financiële ratio's (25 juli 2026): apart gefilterd op "!== null" i.p.v. "> 0" — in
   // tegenstelling tot de kengetallen hierboven kan een ratio hier legitiem 0 of negatief zijn (bijv.
   // een negatieve ROE), en dat moet gewoon getoond worden. null betekent hier altijd "onvoldoende
   // balans-/schuldvelden ingevuld om te berekenen", nooit "berekend en toevallig nul".
   var ratioItems=[
-    {label:'Solvabiliteit (EV/BT)',val:v.solvabiliteit,fmt:function(x){return x.toFixed(1)+'%';}},
-    {label:'ROE',val:v.roe,fmt:function(x){return x.toFixed(1)+'%';}},
-    {label:'ROA',val:v.roa,fmt:function(x){return x.toFixed(1)+'%';}},
-    {label:'Current ratio',val:v.currentRatio,fmt:function(x){return x.toFixed(2);}},
-    {label:'Quick ratio',val:v.quickRatio,fmt:function(x){return x.toFixed(2);},titel:'Acid test: (debiteuren + liquide middelen) / kortlopende schulden. Voorraad en onderhanden werk zijn hier bewust uitgesloten (die zitten wél in de current ratio).'},
-    {label:'EBITDA-dekking schuldendienst',val:v.dscr,fmt:function(x){return x.toFixed(2);},titel:'Vereenvoudigde dekkingsgraad: EBITDA / (rentelasten + aflossingsverplichting). GEEN volwaardige DSCR — die gebruikt de vrije kasstroom vóór schuldendienst (na belasting, capex en werkkapitaal).'},
+    {label:'Solvabiliteit (EV/BT)',val:v.solvabiliteit,fmt:function(x){return fmtPct(x,1)+'';}},
+    {label:'ROE',val:v.roe,fmt:function(x){return fmtPct(x,1)+'';}},
+    {label:'ROA',val:v.roa,fmt:function(x){return fmtPct(x,1)+'';}},
+    {label:'Current ratio',val:v.currentRatio,fmt:function(x){return fmtDec(x,2);}},
+    {label:'Quick ratio',val:v.quickRatio,fmt:function(x){return fmtDec(x,2);},titel:'Acid test: (debiteuren + liquide middelen) / kortlopende schulden. Voorraad en onderhanden werk zijn hier bewust uitgesloten (die zitten wél in de current ratio).'},
+    {label:'EBITDA-dekking schuldendienst',val:v.dscr,fmt:function(x){return fmtDec(x,2);},titel:'Vereenvoudigde dekkingsgraad: EBITDA / (rentelasten + aflossingsverplichting). GEEN volwaardige DSCR — die gebruikt de vrije kasstroom vóór schuldendienst (na belasting, capex en werkkapitaal).'},
     {label:'Netto schuld / EBITDA',val:v.netDebtEbitda,fmt:function(x){return fmtMultiple(x,2);}}
   ].filter(function(it){return it.val!==null&&it.val!==undefined&&isFinite(it.val);});
   var alleItems=items.concat(ratioItems);
@@ -2013,7 +2017,7 @@ function renderWaardering(){
     +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Omzet jaar 1</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--sub)">'+fmtGeld(o1)+'</div></div>'
     +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Omzet jaar 2</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--sub)">'+fmtGeld(o2)+'</div></div>'
     +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">Omzet jaar 3</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--teal)">'+fmtGeld(o3)+'</div></div>'
-    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">EBITDA</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--teal)">'+fmtGeld(ebitdaAmt)+' ('+ebitdaPct.toFixed(1)+'%)</div></div>'
+    +'<div style="text-align:center"><div style="font-size:10px;color:var(--muted);margin-bottom:.2rem">EBITDA</div><div style="font-family:IBM Plex Mono,monospace;font-size:13px;font-weight:600;color:var(--teal)">'+fmtGeld(ebitdaAmt)+' ('+fmtPct(ebitdaPct,1)+')</div></div>'
     +'</div>'
     +dvIndicatorenRij(v)
     +'</div>';
@@ -2063,11 +2067,11 @@ function renderWaardering(){
   if(v.forecastOnbekend){
     html+='<div style="font-size:12px;color:var(--gold-dark);background:var(--gold-bg);border:1px solid var(--gold);border-radius:var(--r);padding:8px 12px"><strong>&#9888; Geen groeiraming mogelijk.</strong> Er zijn niet genoeg opeenvolgende omzetjaren ingevuld om een gemiddelde historische groei te berekenen. Vul omzet jaar 1 t/m 3 in; er wordt bewust g\u00e9\u00e9n groeivoet aangenomen.</div>';
   } else if(v.multipleOnbekend){
-    html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+gemGroei.toFixed(1)+'%</strong>/jaar. Waardebandbreedte niet getoond \u2014 geen multiple-range bekend voor deze sector.</div>';
+    html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+fmtPct(gemGroei,1)+'</strong>/jaar. Waardebandbreedte niet getoond \u2014 geen multiple-range bekend voor deze sector.</div>';
   } else if(v.grondslagNegatief){
-    html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+gemGroei.toFixed(1)+'%</strong>/jaar. Waardebandbreedte niet getoond \u2014 verlieslatende of nul grondslag.</div>';
+    html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+fmtPct(gemGroei,1)+'</strong>/jaar. Waardebandbreedte niet getoond \u2014 verlieslatende of nul grondslag.</div>';
   } else {
-    html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+gemGroei.toFixed(1)+'%</strong>/jaar</div>'
+    html+='<div style="font-size:12px;color:var(--mid);margin-bottom:.75rem">Gem. historische groei: <strong style="color:var(--sub)">'+fmtPct(gemGroei,1)+'</strong>/jaar</div>'
     +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
     +'<th style="text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Jaar</th>'
     +'<th style="text-align:right;padding:8px 10px;font-size:10px;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Omzet</th>'
