@@ -1,0 +1,31 @@
+// N-215 scherm (adv-werkruimte.js): het OHW-overleg legt alleen de verwachting vast (transactiewaarde, closingmaand);
+// retainer en succesfee staan uitsluitend bij Honoraria (KVM-008). Echte functies in een vm-context. Synthetisch, geen netwerk.
+import fs from 'fs';
+import path from 'path';
+import vm from 'vm';
+let n = 0, fout = 0; const ok = (c, m, d) => { n++; if (c) console.log('✓ ' + m); else { fout++; console.log('✗ ' + m + (d !== undefined ? '  ' + String(d).slice(0, 300) : '')); } };
+const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const posts = [];
+const ctx = { console, G: { token: 'tok' }, WORKER: 'https://synth.invalid', window: {}, document: { querySelectorAll: () => [] },
+  ge: () => ({ innerHTML: '' }), toast: () => {}, fetchMetTimeout: async (url, opts) => { posts.push({ url, body: JSON.parse(opts.body || '{}') }); return { status: 200, json: async () => ({ ok: true, verwacht: { bedrag: 69000, uitleg: 'x' } }) }; } };
+vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'adv-werkruimte.js'), 'utf8'), ctx);
+ctx.wrNa = () => {};
+const X = '"><img src=x onerror=alert(1)>';
+const html = ctx.wrFeeFormHtml({ id: 'TD', fee: { afspraak: { transactiewaarde: 2000000, verwacht_closing: '2027-04', door: X, op: 1, rev: 3 } } });
+ok(/name="transactiewaarde"/.test(html) && /name="verwacht_closing"/.test(html) && /value="2027-04"/.test(html) && /value="2000000"/.test(html), 'formulier: verwachte transactiewaarde en closingmaand, met huidige waarden');
+ok(!/retainer|succesfee/i.test(html.replace(/honoraria/gi, '')), 'formulier bevat geen retainer- of succesfeeveld meer (die staan bij Honoraria)', html);
+ok(!html.includes('<img src=x'), 'naam van de laatste wijziger wordt ge-escaped');
+const form = { elements: { transactiewaarde: { value: '2500000' }, verwacht_closing: { value: '2027-05' } } };
+ctx.wrFee({ preventDefault() {}, target: form }, 'TD', 3);
+await new Promise((r) => setTimeout(r, 0));
+const b = posts[0] && posts[0].body;
+ok(posts.length === 1 && /\/mna\/werkruimte\/fee$/.test(posts[0].url) && b.traject_id === 'TD' && b.rev === 3 && b.transactiewaarde === 2500000 && b.verwacht_closing === '2027-05', 'opslaan stuurt alleen traject, versie, transactiewaarde en closingmaand', JSON.stringify(b));
+ok(!['retainer', 'succesfee_pct', 'succesfee_min', 'succesfee_vast'].some((k) => k in b), 'geen oude feevelden in het verzoek');
+ctx.WR.bezig = false; posts.length = 0;
+ctx.wrFee({ preventDefault() {}, target: { elements: { transactiewaarde: { value: '' }, verwacht_closing: { value: '' } } } }, 'TD', 4);
+await new Promise((r) => setTimeout(r, 0));
+ok(posts[0].body.transactiewaarde === null && posts[0].body.verwacht_closing === null, 'lege velden worden null, niet 0 (niets aangenomen)');
+ok(/Nog geen honorariumafspraak/.test(ctx.wrFeeKort(null)) && /69\.000/.test(ctx.wrFeeKort({ verwacht: { bedrag: 69000, uitleg: 'retainer € 9.000' } })), 'korte weergave: bedrag uit de server, of de reden');
+console.log(n - fout + '/' + n + ' geslaagd');
+process.exit(fout ? 1 : 0);
