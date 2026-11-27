@@ -68,7 +68,7 @@ export async function draaiP1cUiChecks(root = process.cwd()) {
     check(a.p1cSchoneUrl('/adv.html', '?traject=MATST001&worker=' + encodeURIComponent('https://evil.example'), WHITELIST) === '/adv.html'
       && a.p1cSchoneUrl('/adv.html', '?traject=MATST001', WHITELIST) === '/adv.html', 'adresbalk: onbekende worker of geen worker → alleen het pad');
     check(/var _WORKER_WHITELIST=\['https:\/\/kantoorinzicht\.marcel-bisschops\.workers\.dev','https:\/\/kantoorinzicht-staging\.marcel-bisschops\.workers\.dev'\];/.test(html)
-      && /var WORKER=_WORKER_WHITELIST\.includes\(_WORKER_PARAM\)\?_WORKER_PARAM:/.test(html), 'adv.html houdt de bestaande worker-whitelist');
+      && /var WORKER=(\/\\\.pages\\\.dev\$\/i\.test\(location\.hostname\)\?_WORKER_WHITELIST\[1\]:\()?_WORKER_WHITELIST\.includes\(_WORKER_PARAM\)\?_WORKER_PARAM:/.test(html), 'adv.html houdt de bestaande worker-whitelist');
     check(/var P1C_CTX=p1cLeesContext\(location\.search\);\s*if\(P1C_CTX\)\{try\{history\.replaceState\(null,'',p1cSchoneUrl\(location\.pathname,location\.search,_WORKER_WHITELIST\)\);/.test(html),
       'context wordt bij laden gelezen en direct uit de adresbalk gehaald');
     check(!/localStorage|sessionStorage|document\.cookie|postMessage|indexedDB|sendBeacon/.test(html), 'adv.html: geen opslag, cookie, postMessage of beacon (token en context alleen in geheugen)');
