@@ -17,6 +17,7 @@ import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
 import { execSync } from 'child_process';
+import { kvm005Blok } from './lib-kvm005-geldvelden.mjs';
 
 // ── Productpunt 22 (10 okt 2026): gebonden, read-only backendbroncontext voor de dagelijkse checks.yml-keten ──
 // GitHub run 38045970745 liet zien dat de private backend in CI ontbrak: audit-checks 8/9 vielen terug op
@@ -2299,7 +2300,7 @@ log('49. N-154: elk opslagpad in mna.html stuurt de basis mee; verwerking na ops
     const src02 = fs.readFileSync(path.join(ROOT, 'mna/02-state-opslag-documenten.js'), 'utf8');
     const helpers = src02.slice(src02.indexOf('function opslagRij('), src02.indexOf('function getDataForFase(id){'));
     const ctx = vm.createContext({ S: { _groepData: { financieel_omzet3: '1000000', financieel_ebitda: '160000' }, dataPerEntiteit: {} }, FASES: [{ id: 'financieel', dataFields: [{ id: 'omzet3' }, { id: 'ebitda' }, { id: 'kop', header: true }] }], renderApp: () => { ctx.getekend = true; } });
-    vm.runInContext(helpers, ctx);
+    vm.runInContext(helpers + '\n' + kvm005Blok(), ctx); // KVM-005: bedragveldblok (veldInvoer) dat de opslaghelpers gebruiken
     // Scherm: fase financieel open op groepsniveau, invoervelden in de DOM.
     const dom = { df_omzet3: { value: '1000000' }, df_ebitda: { value: '160000' } };
     Object.assign(ctx.S, { fase: 0, screen: 'main', data: ctx.S._groepData });
@@ -2504,6 +2505,17 @@ log('KVM-008 honoraria: scherm in de KantoorCockpit (escaping, niet te berekenen
     if (!/stap\('14b','Honoraria per mandaat/.test(h) || !/stap\('9b','Honoraria per mandaat/.test(adv)) warn('KVM-008: handleiding mna/adv niet bijgewerkt');
     else ok('KVM-008: honorariumscherm (tests/kvm008-honoraria-ui.mjs groen) en handleiding mna en adv.');
   } catch (e) { warn('KVM-008: tests/kvm008-honoraria-ui.mjs faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
+}
+
+log('KVM-005 getalnotatie: multiples en bedragvelden in NL-notatie, vergelijking op getalwaarde, handleiding mna/adv');
+{
+  try {
+    const { execFileSync } = await import('child_process');
+    for (const t of ['tests/kvm005-getalnotatie.mjs', 'tests/kvm005-geldvelden.mjs']) execFileSync(process.execPath, [path.join(ROOT, t)], { stdio: 'pipe', cwd: ROOT });
+    const h = fs.readFileSync(path.join(ROOT, 'mna/08-handleiding.js'), 'utf8'), adv = fs.readFileSync(path.join(ROOT, 'adv.html'), 'utf8');
+    if (!/Zodra u een bedragveld verlaat/.test(h) || !/Zodra u een bedragveld verlaat/.test(adv)) warn('KVM-005: handleiding mna/adv niet bijgewerkt (bedragvelden)');
+    else ok('KVM-005: getalnotatie en bedragvelden (tests/kvm005-getalnotatie.mjs en kvm005-geldvelden.mjs groen) en handleiding mna en adv.');
+  } catch (e) { warn('KVM-005: test faalt: ' + String((e && e.stdout) || (e && e.message) || e).split('\n').filter((r) => /✗/.test(r)).join('; ')); }
 }
 
 log('Releaseherkomst: geen uitrol vanuit een werkboom met wijzigingen of niet-vastgelegde bestanden (Codex-review 18-11, P2)');

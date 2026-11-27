@@ -14,6 +14,7 @@ import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { kvm005Blok } from './lib-kvm005-geldvelden.mjs';
 
 function knip(src, van, tot, naam) {
   const a = src.indexOf(van), b = src.indexOf(tot, a + 1);
@@ -95,7 +96,7 @@ function laad(root) {
     brandMerkHtml: () => '', kmSectorLabels: () => ({}), kmKoperTargetHtml: () => '', kmAdvContextUrl: () => 'adv.html',
     bindKoopmandaatScherm: () => {},
   });
-  vm.runInContext(delen.join('\n'), ctx, { filename: 'mna/04#P2-28' });
+  vm.runInContext(delen.concat(kvm005Blok()).join('\n'), ctx, { filename: 'mna/04#P2-28' });
   return ctx;
 }
 

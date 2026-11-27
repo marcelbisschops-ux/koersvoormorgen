@@ -17,6 +17,7 @@ import fs from 'fs';
 import path from 'path';
 import vm from 'vm';
 import { fileURLToPath, pathToFileURL } from 'url';
+import { kvm005Blok } from './lib-kvm005-geldvelden.mjs';
 
 const WORKER = 'https://worker.test';
 const FASE = 'financieel';
@@ -121,7 +122,7 @@ function laad(root, { rol = 'verkoper', code = 'VSYN0001', vergrendeld = false, 
   });
   ctx.window = ctx;
   if (metModule) vm.runInContext(src12, ctx, { filename: 'mna/12-documentclassificatie.js' });
-  vm.runInContext(delen.join('\n\n'), ctx, { filename: 'mna/01+02#group-documents-ui' });
+  vm.runInContext(delen.concat(kvm005Blok()).join('\n\n'), ctx, { filename: 'mna/01+02#group-documents-ui' });
 
   const bestand = (naam) => new File(['Synthetisch document (geen echte gegevens).'], naam, { type: 'text/plain' });
   const begin = (fase = FASE) => { log.fase = fase; ctx.DOCS[fase] = ctx.DOCS[fase] || []; log.renders = 0; log.requests = []; log.overig = []; log.autoFill = 0; log.toasts = []; renderApp(); };
@@ -215,7 +216,7 @@ function laadGroepswacht(root) {
     S: null,
   });
   ctx.window = ctx;
-  vm.runInContext(delen.join('\n\n'), ctx, { filename: 'mna/01+02#groepswacht' });
+  vm.runInContext(delen.concat(kvm005Blok()).join('\n\n'), ctx, { filename: 'mna/01+02#groepswacht' });
   // Groep met bruto som 3.000.000 (alleen entiteit A meegeteld); entiteit B nog niet in de som.
   const opzet = () => {
     const dataA = { financieel_omzet3: '3000000' };
