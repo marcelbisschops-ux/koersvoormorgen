@@ -68,6 +68,26 @@ ok(ctx.finAiHtml(ctx.FIN.data) === '' && ctx.finMetingHtml(ctx.FIN.data) === '',
 ctx.isTussen = () => true;
 ok(/disabled/.test(ctx.finAiHtml({ ...ctx.FIN.data, ai_beschikbaar: false })), 'AI niet beschikbaar → knop uitgeschakeld');
 
+// ── 1b. Herstel R-KVM014-2: na een gelukte wijziging rekent de waardering niet meer op de oude centrale grondslag ──
+{
+  const c3 = { console, Math, String, Number, JSON, isFinite, Object, Array, Promise, setTimeout, document: { getElementById: () => null }, S: { code: 'T1', rol: 'tussen' }, FASES: {}, isTussen: () => true, isVerkoper: () => false, ge: () => null, WORKER: 'x' };
+  c3.window = c3; vm.createContext(c3);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'mna/16-financieel.js'), 'utf8'), c3);
+  c3.finHerteken = () => {};
+  const ov = (eb) => ({ ok: true, jaren: [{ jaar: 2024, genormaliseerd: { ebitda: eb, omzet: 1000000 }, gerapporteerd: { ebitda: 200000 } }], normalisaties: [], prognose: { status: 'geen', jaren: [] } });
+  let terug = ov(210000);
+  c3.fetchMetTimeout = () => Promise.resolve({ status: 200, json: () => Promise.resolve(terug) });
+  c3.finZorgCentraal(() => {}); await new Promise((r) => setTimeout(r, 5));
+  ok(c3.finCentraleGrondslag().ebitda === 210000, 'centrale grondslag geladen (210.000)');
+  terug = ov(310000);
+  c3.finPost('normalisatie/beoordeel', { id: 'NM1', rev: 1, status: 'goedgekeurd' }, 'ok'); await new Promise((r) => setTimeout(r, 5));
+  ok(c3.FIN.data.jaren[0].genormaliseerd.ebitda === 310000 && c3.finCentraleGrondslag() === null, 'na gelukte wijziging is de oude grondslag vervallen (geen 210.000 meer)');
+  c3.finZorgCentraal(() => {}); await new Promise((r) => setTimeout(r, 5));
+  ok(c3.finCentraleGrondslag().ebitda === 310000, 'waardering laadt opnieuw en rekent op 310.000 (Codex-proef: paneel 310.000, waardering 210.000)');
+  const src15 = fs.readFileSync(path.join(ROOT, 'mna/15-kolommenbalans.js'), 'utf8');
+  ok(/finCentraalVervallen\(\)/.test(src15), 'ook een gelukte kolommenbalanswijziging laat de grondslag vervallen');
+}
+
 // ── 2. Synergieën buiten genormaliseerde EBITDA en ondernemingswaarde (mna/03) ──
 const data = { financieel_omzet1: '900.000', financieel_omzet2: '950.000', financieel_omzet3: '1.000.000', financieel_ebitda: '180.000', financieel_ebitdaNorm: '190.000' };
 const c2 = { console, Math, String, Number, JSON, isFinite, parseFloat, parseInt, Object, Array, Date, S: { code: 'T1', rol: 'tussen', data, _groepData: data, traject: { sector: 'accountancy' } },

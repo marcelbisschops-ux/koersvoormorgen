@@ -41,7 +41,7 @@ function kbPost(pad, body, okTekst, naSucces) {
   body.code = S.code;
   kbAntwoord(fetchMetTimeout(WORKER + '/mna/kolommenbalans/' + pad, { method: 'POST', headers: kbHeaders(), body: JSON.stringify(body) }, 60000)).then(function (x) {
     KB.bezig = false;
-    if (x.s === 200 && x.d && x.d.ok === true && Array.isArray(x.d.jaren)) { KB.data.jaren = x.d.jaren; KB.melding = { soort: 'ok', tekst: okTekst }; if (naSucces) naSucces(); }
+    if (x.s === 200 && x.d && x.d.ok === true && Array.isArray(x.d.jaren)) { KB.data.jaren = x.d.jaren; KB.melding = { soort: 'ok', tekst: okTekst }; if (typeof finCentraalVervallen === 'function') finCentraalVervallen(); if (typeof FIN !== 'undefined' && FIN && !FIN.bezig) FIN.status = 'idle'; if (naSucces) naSucces(); }
     else {
       if (x.d && Array.isArray(x.d.jaren)) KB.data.jaren = x.d.jaren;
       KB.melding = { soort: 'fout', tekst: x.s === 0 ? 'Geen verbinding met de server; er is niets gewijzigd.' : ((x.d && x.d.error) || ('Niet gelukt (HTTP ' + x.s + ').')) };

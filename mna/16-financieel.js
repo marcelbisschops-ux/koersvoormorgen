@@ -39,7 +39,7 @@ function finLaad() {
   var scope = FIN.scope; FIN.status = 'laden';
   finHaal().then(function (x) {
     if (FIN.scope !== scope) return;
-    if (x.s === 200 && x.d && x.d.ok === true && Array.isArray(x.d.jaren)) { FIN.status = 'ok'; FIN.data = x.d; } else { FIN.status = 'fout'; FIN.data = null; }
+    if (x.s === 200 && x.d && x.d.ok === true && Array.isArray(x.d.jaren)) { FIN.status = 'ok'; FIN.data = x.d; finCentraalVervallen(); } else { FIN.status = 'fout'; FIN.data = null; }
     finHerteken();
   });
 }
@@ -49,7 +49,7 @@ function finPost(pad, body, ok) {
   body.code = S.code;
   finAntw(fetchMetTimeout(WORKER + '/mna/financieel/' + pad, { method: 'POST', headers: finHeaders(), body: JSON.stringify(body) }, 30000)).then(function (x) {
     FIN.bezig = false;
-    if (x.s === 200 && x.d && x.d.ok === true && Array.isArray(x.d.jaren)) { FIN.data = x.d; FIN.form = null; FIN.eqForm = null; FIN.wsForm = null; FIN.melding = { soort: 'ok', tekst: ok + (typeof x.d.nieuw === 'number' ? ' (' + x.d.nieuw + ' nieuw)' : '') }; }
+    if (x.s === 200 && x.d && x.d.ok === true && Array.isArray(x.d.jaren)) { finCentraalVervallen(); FIN.data = x.d; FIN.form = null; FIN.eqForm = null; FIN.wsForm = null; FIN.melding = { soort: 'ok', tekst: ok + (typeof x.d.nieuw === 'number' ? ' (' + x.d.nieuw + ' nieuw)' : '') }; }
     else {
       FIN.melding = { soort: 'fout', tekst: x.s === 0 ? 'Geen verbinding met de server; er is niets gewijzigd.' : ((x.d && x.d.error) || ('Niet gelukt (HTTP ' + x.s + ').')) };
       if (x.s === 409) { FIN.status = 'idle'; setTimeout(finLaad, 0); }
@@ -332,7 +332,7 @@ window.finAiStart = function () {
   finAntw(fetchMetTimeout(WORKER + '/mna/financieel/normalisatie/ai-voorstellen', { method: 'POST', headers: finHeaders(), body: JSON.stringify({ code: S.code, document_ids: ids }) }, 60000)).then(function (x) {
     FIN.bezig = false;
     if (x.s === 200 && x.d && x.d.ok === true && Array.isArray(x.d.jaren)) {
-      FIN.data = x.d; FIN.aiResultaat = x.d.ai || null; FIN.aiOpen = false; FIN.aiKeuze = {};
+      finCentraalVervallen(); FIN.data = x.d; FIN.aiResultaat = x.d.ai || null; FIN.aiOpen = false; FIN.aiKeuze = {};
       FIN.melding = { soort: 'ok', tekst: 'AI-analyse klaar: ' + (x.d.nieuw || 0) + ' nieuw. Niets is goedgekeurd; beoordeel elk voorstel hieronder.' };
     } else if (x.s === 0) {
       FIN.melding = { soort: 'fout', tekst: 'Geen antwoord binnen 60 seconden. De analyse kan nog lopen; herlaad over een minuut om te zien of er voorstellen zijn bijgekomen.' };
@@ -373,7 +373,7 @@ function finMetingHtml(d) {
   var m = d.meting;
   if (!isTussen() || !m || !m.totaal) return '';
   var uur = function (v, nb) { return v === null || v === undefined ? 'nog geen besluit' : String(v).replace('.', ',') + ' uur (' + nb + ' beslist)'; };
-  return '<div style="font-size:12px;color:var(--sub);margin:.5rem 0;line-height:1.6" id="fin-meting"><strong>Meting:</strong> ' + m.uit_voorstel + ' van ' + m.totaal + ' normalisaties kwamen uit voorstellen (KVM ' + m.herkomst.kvm + ', AI ' + m.herkomst.ai + '), ' + m.handmatig + ' handmatig.'
+  return '<div style="font-size:12px;color:var(--sub);margin:.5rem 0;line-height:1.6" id="fin-meting"><strong>Meting (herkomst en doorlooptijd, geen berekening van bespaarde uren):</strong> ' + m.uit_voorstel + ' van ' + m.totaal + ' normalisaties kwamen uit voorstellen (KVM ' + m.herkomst.kvm + ', AI ' + m.herkomst.ai + '), ' + m.handmatig + ' handmatig.'
     + (m.acceptatie_voorstellen_pct !== null ? ' Goedgekeurd van de beoordeelde voorstellen: ' + String(m.acceptatie_voorstellen_pct).replace('.', ',') + '%.' : '')
     + ' Mediane tijd van aanmaken tot besluit: voorstellen ' + uur(m.doorlooptijd_uren_mediaan.voorstel, m.beslist.voorstel) + ', handmatig ' + uur(m.doorlooptijd_uren_mediaan.handmatig, m.beslist.handmatig) + '.'
     + (m.ai && m.ai.analyses ? ' AI-gebruik: ' + m.ai.analyses + ' analyse(s), ' + finGetal(m.ai.input_tokens) + ' invoer- en ' + finGetal(m.ai.output_tokens) + ' uitvoertokens.' : '') + '</div>';
@@ -397,6 +397,10 @@ function renderFinancieleAnalyse(faseId) {
 // KVM-014 / werkregel 59 (26-11-2026): centrale grondslag voor het waarderingsscherm (mna/03 dvBerekenWaardering).
 // Aparte cache per traject (los van het financiële paneel); null = niet beschikbaar → zichtbare terugval op DD-velden.
 window.FIN_CENTRAAL = { code: null, status: 'idle', data: null };
+// KVM-014 (keten-browsertest 27-11): na elke gelukte wijziging van normalisaties, equity bridge, prognose, waarderingsset of
+// kolommenbalans is de centrale grondslag verouderd; het waarderingsscherm laadt hem dan opnieuw in plaats van de oude te tonen.
+function finCentraalVervallen() { if (window.FIN_CENTRAAL) { window.FIN_CENTRAAL.code = null; window.FIN_CENTRAAL.status = 'idle'; window.FIN_CENTRAAL.data = null; } }
+window.finCentraalVervallen = finCentraalVervallen;
 window.finCentraleGrondslag = function () {
   var c = window.FIN_CENTRAAL;
   if (!c || c.code !== S.code || c.status !== 'ok' || !c.data || !c.data.jaren || !c.data.jaren.length) return null;
