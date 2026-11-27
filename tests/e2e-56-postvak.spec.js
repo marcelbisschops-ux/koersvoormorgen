@@ -1,6 +1,9 @@
 // #56 (12-11-2026): Postvak in marilyn: doorsturen, beantwoorden, één bericht verwijderen en het postvak legen,
 // met de echte knoppen (prompt/confirm) en verificatie in staging-D1. Staging leidt alle e-mail om naar het
 // Resend-testadres (KVM_MAIL_TESTMODUS). STAGING, fictieve berichten.
+// 27-11-2026 (N-214): staging heeft geen communicatiesleutels meer. Doorsturen en beantwoorden horen daar aantoonbaar
+// geweigerd te worden (503 'Resend niet geconfigureerd', foutmelding zichtbaar); met sleutel blijft 200 vereist.
+const verzendUitkomst = async (w, page) => { const r = await w; if (r.status() === 200) return 'verstuurd'; expect(r.status()).toBe(503); expect(String((await r.json()).error || '')).toMatch(/niet geconfigureerd/i); await expect(page.locator('text=/mislukt/i').first()).toBeVisible({ timeout: 5000 }); return 'geweigerd'; };
 import { test, expect } from '@playwright/test';
 import { leesAdminKey, WORKER, d1, IS_STAGING_WORKER, marilynTab } from './lib.mjs';
 
@@ -27,7 +30,7 @@ test('postvak: doorsturen, beantwoorden, verwijderen, legen', async ({ page }) =
   page.once('dialog', (d) => d.accept('synth-doorsturen@bisschopsfinancing.test'));
   let w = page.waitForResponse((r) => r.url().includes('/mna/admin/postvak/doorsturen'));
   await rijA.locator('.pv-doorsturen').click();
-  expect((await w).status()).toBe(200);
+  const uitkomst1 = await verzendUitkomst(w, page);
 
   // Beantwoorden (twee vragen: adres en bericht)
   const antwoorden = ['synth-antwoord@bisschopsfinancing.test', 'Synthetisch antwoord'];
@@ -35,7 +38,8 @@ test('postvak: doorsturen, beantwoorden, verwijderen, legen', async ({ page }) =
   page.on('dialog', opDialoog);
   w = page.waitForResponse((r) => r.url().includes('/mna/admin/postvak/beantwoorden'));
   await page.locator('tr.pv-row', { hasText: MERK + ' A' }).locator('.pv-beantwoorden').click();
-  expect((await w).status()).toBe(200);
+  const uitkomst2 = await verzendUitkomst(w, page);
+  expect(uitkomst2).toBe(uitkomst1); // consistent: beide verstuurd of beide geweigerd
 
   // Eén bericht verwijderen (bevestigen)
   page.once('dialog', (d) => d.accept());

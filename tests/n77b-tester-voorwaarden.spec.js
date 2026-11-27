@@ -98,7 +98,8 @@ test.describe('N-77b · expliciet testerakkoord in adv.html', () => {
     await expect(page.locator('body')).toContainText('Synth Traject BV');
     // N-170: het dashboard laadt sinds WF-001 (goedgekeurd, live 05-11-2026) ook de kantoorwerkruimte (alleen lezen).
     // Die twee verzoeken horen bij het dashboard, niet bij testerakkoord; verder mag er niets bij komen.
-    const WERKRUIMTE = ['GET /mna/werkruimte/overleg', 'GET /mna/werkruimte/mijn-acties'];
+    // 27-11-2026: het dashboard laadt ook zoekopdrachten (N-64) en Quick Visit-overzicht en taken (KVM-015).
+    const WERKRUIMTE = ['GET /mna/werkruimte/overleg', 'GET /mna/werkruimte/mijn-acties', 'GET /adviseur/koopmandaten', 'GET /gebruikers/crm/bezoek/overzicht', 'GET /gebruikers/crm/taken'];
     expect(pad(net).filter((x) => !WERKRUIMTE.includes(x))).toEqual(['POST /adviseur/trajecten']);
     expect(pad(net).filter((x) => WERKRUIMTE.includes(x)).sort()).toEqual([...WERKRUIMTE].sort());
     await expect(page.locator('#vw-tv')).toHaveCount(0);

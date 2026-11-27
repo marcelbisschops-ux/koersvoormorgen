@@ -62,6 +62,8 @@ ok(multPunt.length === 0, "geen multiple-weergave meer als toFixed(n)+'x'/'×' i
   vm2.runInContext(bron.split('\n').filter((l) => /^function fmt(Dec|Pct)\(/.test(l)).join('\n'), c2);
   ok(c2.fmtPct(12.5, 1) === '12,5%' && c2.fmtPct(-3, 1) === '-3,0%' && c2.fmtPct(1234.5, 1) === '1.234,5%', 'fmtPct: komma als decimaalteken, punt als duizendtal', [c2.fmtPct(12.5, 1), c2.fmtPct(-3, 1), c2.fmtPct(1234.5, 1)]);
   ok(c2.fmtDec(1.25, 2) === '1,25' && c2.fmtPct(null, 1) === '—' && c2.fmtDec('', 1) === '—', 'fmtDec en lege waarden');
+  vm2.runInContext(functie(mar, 'fmtPct'), B);
+  ok(B.fmtPct(0) === '0,0%' && B.fmtPct(null) === '—' && B.fmtPct(1.25) === '1,3%', 'Marilyn: nul historische omzetgroei wordt als 0,0% getoond');
   const pctPunt = [];
   for (const f of ['mna/03-rekenkern-waardering.js', 'mna/06-schermen.js', 'marilyn.html']) {
     fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').forEach((r, i) => {

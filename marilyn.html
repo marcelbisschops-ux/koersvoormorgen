@@ -2401,7 +2401,7 @@ function renderWaarderingTab(el){
   function parseGeld(s){if(!s)return 0;var str=String(s).trim();var neg=/^[^\d]*[-−–—‑－]\s*\d/.test(str)||/\d\s*[-−–—‑－]\s*$/.test(str)||/^\(.*\d.*\)$/.test(str);var n=str.replace(/[^0-9,.]/g,'').replace(/\./g,'').replace(',','.');var v=parseFloat(n)||0;return neg?-v:v;}
   // KVM-005 (20-11-2026): NL-notatie zonder afronding op duizenden (zelfde regel als mna/03 fmtGeld).
   function fmtGeld(n){if(!n||isNaN(n))return '—';var neg=n<0,a=Math.abs(n),c=Math.round(a*100)%100!==0;return '\u20ac '+(neg?'-':'')+a.toLocaleString('nl-NL',{minimumFractionDigits:c?2:0,maximumFractionDigits:c?2:0});}
-  function fmtPct(n){return n?Number(n).toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'%':'—';} // KVM-005: NL-notatie
+  function fmtPct(n){return n===null||n===undefined||n===''||!Number.isFinite(Number(n))?'—':Number(n).toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';} // KVM-005: NL-notatie
 
   function bereken(){
     var o3=W.omzet3||0;
