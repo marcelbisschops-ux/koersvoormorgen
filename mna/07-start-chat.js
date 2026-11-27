@@ -36,6 +36,11 @@ renderApp();
 // (mna.html?code=XXXX) — vult de toegangscode automatisch in en logt meteen in.
 (function autoLoginViaUrl(){
   var codeParam = new URLSearchParams(location.search).get('code');
+  var zoekopdracht = /^#zoekopdracht=(T[A-Z0-9]{7})$/.exec(location.hash);
+  if (zoekopdracht) {
+    codeParam = zoekopdracht[1];
+    history.replaceState(history.state, '', location.pathname + location.search);
+  }
   if (!codeParam) return;
   var codeInput = document.getElementById('l-code');
   var loginBtn = document.getElementById('l-btn');

@@ -756,7 +756,10 @@ function toonZoekopdrachten() {
           open.disabled=true;
           try {
             var d=await vraag('/adviseur/koopmandaten/'+encodeURIComponent(m.id));
-            if(actueel() && /^T[A-Z0-9]{7}$/.test(d.login_code)) location.assign(p1cMnaUrl(d.login_code,WORKER,_WORKER_WHITELIST[1]));
+            if(actueel() && /^T[A-Z0-9]{7}$/.test(d.login_code)) {
+              var worker=WORKER===_WORKER_WHITELIST[1]?'?worker='+encodeURIComponent(WORKER):'';
+              location.assign('mna.html'+worker+'#zoekopdracht='+d.login_code);
+            }
           } catch(e){if(actueel()) melding.textContent=e.message;}
           finally {if(actueel()) open.disabled=false;}
         };
