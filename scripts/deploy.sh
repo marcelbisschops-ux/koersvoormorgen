@@ -164,6 +164,9 @@ deploy_backend_prod() {
   curl -s "$WORKER_URL/health" || echo "(health-check mislukt — controleer handmatig)"
   echo ""
   controleer_productieherkomst
+  if [ "${KVM_SKIP_PREDEPLOY:-}" != "1" ]; then
+    bash ./predeploy.sh --rapporteer-productie
+  fi
   echo "Rollback indien nodig: vorige Version ID opnieuw deployen (staat in de output hierboven)."
 }
 
