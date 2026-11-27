@@ -67,7 +67,7 @@ async function main() {
     adminKey: ADMIN,
   });
   const koperCode2 = create2.json.koper_code;
-  await accepteerPlatformvoorwaarden({ verkoper: create2.json.code, koper: koperCode2, tussenpersoon: create2.json.tussen_code });
+  await accepteerPlatformvoorwaarden({ verkoper: create2.json.verkoper_inlogcode || create2.json.code, koper: koperCode2, tussenpersoon: create2.json.tussen_code });
   if (bemDoc) {
     const dlCross = await api('GET', '/mna/document/download/' + bemDoc.id + '?code=' + koperCode2);
     check('koper van ANDER traject kan BEM-doc van traject 1 niet downloaden', dlCross.status === 403, 'status=' + dlCross.status);

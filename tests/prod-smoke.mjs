@@ -76,7 +76,7 @@ async function maakAdminTraject(kantoorNaam, extra) {
   // ruim daarom hier exact dit zojuist eigen aangemaakte traject op via de admin-delete, controleer
   // dat resultaat en gooi daarna de oorspronkelijke fout opnieuw.
   try {
-    await accepteerPlatformvoorwaarden({ verkoper: r.json.code, koper: r.json.koper_code, tussenpersoon: r.json.tussen_code });
+    await accepteerPlatformvoorwaarden({ verkoper: r.json.verkoper_inlogcode || r.json.code, koper: r.json.koper_code, tussenpersoon: r.json.tussen_code });
   } catch (e) {
     if (r.json.code) {
       const del = await api('POST', '/admin/delete/mna/' + r.json.code, { adminKey: ADMIN });

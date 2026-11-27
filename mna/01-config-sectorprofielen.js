@@ -14,6 +14,16 @@ function kvmKiesWorker(host,gevraagd){
   if(/\.pages\.dev$/.test(host)) return STAGING;
   return gevraagd||STAGING;
 }
+// N-120 batch F: de inlogcode die de verkoper van dit traject krijgt. De server bepaalt die (verkoper_inlogcode:
+// traject-ID zolang het oude inlogmodel geldt, anders de eigen verkopercode). Een oudere server stuurt het veld niet
+// mee: dan het traject-ID, zoals voorheen. Veld aanwezig maar leeg = er is (nog) geen werkende code: '' teruggeven,
+// nooit het traject-ID, want dat werkt dan niet als inlogcode.
+function verkoperInlogcodeVan(t) {
+  if (!t) return '';
+  if (Object.prototype.hasOwnProperty.call(t, 'verkoper_inlogcode')) return t.verkoper_inlogcode || '';
+  return t.id || t.code || '';
+}
+
 // fetch() zelf timet nooit uit — bij een stallende verbinding (slechte wifi, cold-start-hik, een
 // proxy die de connectie openhoudt zonder data) blijft een aanroep zonder deze wrapper voor altijd
 // hangen: geen foutmelding, geen herstel, de knop blijft "Laden..." tonen. Vooral riskant op een

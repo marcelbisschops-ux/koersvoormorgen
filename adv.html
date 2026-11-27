@@ -394,6 +394,9 @@ var VIEW='dashboard'; // dashboard | detail
 var TRAJECT=null;
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// N-120 batch F: de inlogcode van de verkoper zoals de server die bepaalt (zelfde regel als verkoperInlogcodeVan in
+// mna/01): veld aanwezig → die waarde (leeg = nog geen werkende code); oudere server zonder veld → traject-ID.
+function verkoperInlogcodeVan(t){if(!t)return '';if(Object.prototype.hasOwnProperty.call(t,'verkoper_inlogcode'))return t.verkoper_inlogcode||'';return t.id||t.code||'';}
 function fmt(ts){if(!ts)return'—';return new Date(ts).toLocaleDateString('nl-NL',{day:'2-digit',month:'short',year:'numeric'});}
 function ge(id){return document.getElementById(id);}
 function render(h){ge('app').innerHTML=h;}
@@ -1282,7 +1285,9 @@ async function laadGesprekken(id, tussenCode){
   var body=ge('gesp-body');
   body.innerHTML='<div style="color:var(--muted);font-size:13px">Laden...</div>';
   try{
-    var r=await fetch(WORKER+'/mna/gesprekken/'+id+'?code='+encodeURIComponent(tussenCode));
+    // N-120 batch F: traject-ID in het pad blijft (een tussencode kan bij een groep meerdere trajecten dekken), plus de
+    // eigen tussencode als sleutel: in de strenge stand is het traject-ID alleen geen toegangsbewijs meer.
+    var r=await fetch(WORKER+'/mna/gesprekken/'+id+'?code='+encodeURIComponent(tussenCode),{headers:{'x-tussen-key':tussenCode||''}});
     if(!r.ok)throw new Error('HTTP '+r.status);
     var gesprekken=await r.json();
     if(!gesprekken.length){body.innerHTML='<div class="empty" style="padding:1.5rem">Nog geen gesprekken vastgelegd.</div>';return;}
@@ -1379,7 +1384,10 @@ async function slaNotitieOp(id){
   var tekst=veld.value.trim();
   try{
     var t=G.trajecten.find(function(x){return x.id===id;})||{};
-    var code=t.tussen_code||id;
+    // N-120 batch F: alleen de eigen tussencode (rol begeleider). Geen terugval op het traject-ID: dat zou als verkoper
+    // opslaan en geeft in de strenge stand geen toegang.
+    var code=t.tussen_code;
+    if(!code){toast('De notitie kan niet worden opgeslagen: de begeleiderscode van dit traject ontbreekt. Ververs de pagina.','err');return;}
     var r=await fetch(WORKER+'/mna/save',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({code:code,fase_id:'voorgesprek',data_json:{adv_notitie:{label:'Adviseur notitie',value:tekst}},
@@ -1502,10 +1510,10 @@ function nieuwTraject(){
       var koperEmailVal=ge('n-koper-email').value.trim();
       if(uitn.koper==='verzonden')uitnHtml+='<br>✉ Uitnodiging verstuurd naar koper ('+esc(koperEmailVal)+')';
       else if(uitn.koper)uitnHtml+='<br><span style="color:var(--red)">⚠ Uitnodiging koper niet verzonden: '+esc(uitn.koper)+'</span>';
-      ge('n-ok').innerHTML='<strong>✓ Aangemaakt</strong> &nbsp;Code: <strong>'+esc(d.code)+'</strong> &nbsp;Koperscode: <strong>'+esc(d.koper_code)+'</strong>'+uitnHtml+esFeeHtml;
+      ge('n-ok').innerHTML='<strong>✓ Aangemaakt</strong> &nbsp;Verkoperscode: <strong>'+(esc(verkoperInlogcodeVan(d))||'niet beschikbaar')+'</strong> &nbsp;Koperscode: <strong>'+esc(d.koper_code)+'</strong>'+uitnHtml+esFeeHtml;
       ge('n-ok').style.display='block';
       ge('n-ann').textContent='Sluiten';btn.textContent='Aangemaakt ✓';
-      G.trajecten.unshift({id:d.code,kantoor_naam:naam,traject_type:ge('n-type').value,sector:ge('n-sector').value,structuur_type:ge('n-structuur')?ge('n-structuur').value:'bv',status:'actief',koper_code:d.koper_code,tussen_code:d.tussen_code,created_at:Date.now()});
+      G.trajecten.unshift({id:d.code,kantoor_naam:naam,traject_type:ge('n-type').value,sector:ge('n-sector').value,structuur_type:ge('n-structuur')?ge('n-structuur').value:'bv',status:'actief',koper_code:d.koper_code,tussen_code:d.tussen_code,verkoper_inlogcode:verkoperInlogcodeVan(d)||null,created_at:Date.now()});
     }catch(e){err.textContent=e.message;err.style.display='block';btn.disabled=false;btn.textContent='Aanmaken';}
   };
   ge('n-naam').focus();
@@ -1556,7 +1564,7 @@ function renderDetail(t){
           <div style="display:flex;flex-wrap:wrap;gap:1rem">
             <div>
               <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Verkoperscode</div>
-              <div class="code-box"><span class="code-val">${esc(id)}</span><button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(id)}');this.textContent='✓'">Kopieer</button></div>
+              ${verkoperInlogcodeVan(t)?`<div class="code-box"><span class="code-val">${esc(verkoperInlogcodeVan(t))}</span><button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(verkoperInlogcodeVan(t))}');this.textContent='✓'">Kopieer</button></div>`:`<div class="code-box"><span class="code-val" style="color:var(--muted)">Nog niet beschikbaar, ververs de pagina</span></div>`}
             </div>
             ${t.koper_code?`<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Koperscode</div><div class="code-box"><span class="code-val-gold">${esc(t.koper_code)}</span><button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(t.koper_code)}');this.textContent='✓'">Kopieer</button></div></div>`:''}
             ${t.tussen_code?`<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Uw tussenpersoonscode</div><div class="code-box"><span class="code-val" style="color:var(--mid)">${esc(t.tussen_code)}</span><button class="copy-btn" onclick="navigator.clipboard.writeText('${esc(t.tussen_code)}');this.textContent='✓'">Kopieer</button></div></div>`:''}

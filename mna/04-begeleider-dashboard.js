@@ -123,7 +123,7 @@ function toonNieuwTrajectModalTussen(){
           +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.6rem">'
           +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem">'
           +'<div style="font-size:10px;color:var(--muted);margin-bottom:2px">Verkoperscode</div>'
-          +'<div style="font-family:IBM Plex Mono,monospace;font-size:1.1rem;font-weight:600;color:var(--teal)">'+d.code+'</div></div>'
+          +'<div style="font-family:IBM Plex Mono,monospace;font-size:1.1rem;font-weight:600;color:var(--teal)">'+(esc(verkoperInlogcodeVan(d))||'niet beschikbaar')+'</div></div>'
           +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:.6rem .875rem">'
           +'<div style="font-size:10px;color:var(--muted);margin-bottom:2px">Koperscode</div>'
           +'<div style="font-family:IBM Plex Mono,monospace;font-size:1.1rem;font-weight:600;color:var(--gold)">'+d.koper_code+'</div></div>'
@@ -3163,7 +3163,7 @@ function renderBegeleiderDashboard(app){
     // worden zodat de begeleider weet dat deze versie (nog) niet terug te vinden zal zijn.
     var coOpgeslagen=true;
     if(tekst&&tekst!=='Fout bij genereren'){
-      var coR=await fetch(WORKER+'/mna/document/concept-opslaan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.traject.id,doc_type:type,tekst:tekst})}).then(function(r){return r.json();}).catch(function(){return{ok:false};});
+      var coR=await fetch(WORKER+'/mna/document/concept-opslaan',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey||S.code},body:JSON.stringify({code:S.traject.id,doc_type:type,tekst:tekst})}).then(function(r){return r.json();}).catch(function(){return{ok:false};});
       coOpgeslagen=!!(coR&&coR.ok);
     }
     var kleuren={nda:'#7c5cbf',loi:'var(--gold)',bem:'#2a5ea0',excl:'#1a7a5e'};
@@ -5951,7 +5951,7 @@ function renderBegeleiderDashboard(app){
     var ibtn=triggerBtn||null;if(ibtn){ibtn.disabled=true;ibtn.textContent='Laden...';}
     var t2=S.traject;
     var mnaUrl='https://koersvoormorgen.nl/mna.html';
-    var verkoperCode=t2.id||S.code;
+    var verkoperCode=verkoperInlogcodeVan(t2); // N-120 batch F: de inlogcode die in de huidige stand werkt
 
     // Bouw categorielijst op basis van FASES fase:1 velden
     var sectoren = {
@@ -6215,6 +6215,7 @@ function renderBegeleiderDashboard(app){
       var email=document.getElementById('bg-iv-email').value.trim();
       var ivErr=document.getElementById('bg-iv-err');
       if(!email){ivErr.style.display='block';ivErr.textContent='E-mailadres verplicht.';return;}
+      if(!verkoperCode){ivErr.style.display='block';ivErr.textContent='De verkopercode van dit traject is nog niet beschikbaar. Ververs het dashboard en probeer het opnieuw.';return;}
       var html = bouwMailHtml();
       var sb=this;sb.disabled=true;sb.textContent='Versturen...';
       var er=await fetch(WORKER+'/mna/mail-begeleider',{method:'POST',headers:{'Content-Type':'application/json','x-tussen-key':S._bgKey},

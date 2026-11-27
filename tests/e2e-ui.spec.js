@@ -437,7 +437,7 @@ test.describe('Rol Click-Through: documentcontent-race (regressie 12 sep 2026)',
     await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
     await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E MouRace Kantoor BV', traject_type: 'Verkoop' } } });
-    verkoperCode = c.json.code;
+    verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
     tussenCode = c.json.tussen_code;
     await accepteerPlatformvoorwaarden({ verkoper: verkoperCode, tussenpersoon: tussenCode });
     await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
@@ -509,7 +509,7 @@ test.describe('Login en rollen (eigen testtraject)', () => {
     // Limiet 1, alle modules aan (dit is de rollen-test, geen gating-test)
     await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E Rollen Kantoor BV', traject_type: 'Verkoop' } } });
-    verkoperCode = c.json.code;
+    verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
     tussenCode = c.json.tussen_code;
     await accepteerPlatformvoorwaarden({ verkoper: verkoperCode, tussenpersoon: tussenCode });
     // Verwerkersovereenkomst vooraf tekenen, anders blokkeert de VOK-popup het dashboard.
@@ -628,7 +628,7 @@ test.describe('Rol Click-Through: koper', () => {
     await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E Koper Kantoor BV', koper_naam: 'E2E Koper Tegenpartij BV', traject_type: 'Verkoop' } } });
     trajectCode = c.json.code;
-    verkoperCode = c.json.code;
+    verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
     koperCode = c.json.koper_code;
     tussenCode = c.json.tussen_code;
     await accepteerPlatformvoorwaarden({ verkoper: verkoperCode, koper: koperCode, tussenpersoon: tussenCode });
@@ -712,7 +712,7 @@ test.describe('Rol Click-Through: meekijker', () => {
     await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true, meekijker: true } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E Meekijker Kantoor BV', traject_type: 'Verkoop' } } });
     trajectCode = c.json.code;
-    verkoperCode = c.json.code;
+    verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
     tussenCode = c.json.tussen_code;
     await accepteerPlatformvoorwaarden({ verkoper: verkoperCode, tussenpersoon: tussenCode });
     await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
@@ -886,7 +886,7 @@ test.describe('Cross-entiteit databeveiliging (regressie 18 aug 2026)', () => {
     await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
     await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E CrossEntiteit Kantoor BV', traject_type: 'Verkoop' } } });
-    verkoperCode = c.json.code;
+    verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
     tussenCode = c.json.tussen_code;
     await accepteerPlatformvoorwaarden({ verkoper: verkoperCode, tussenpersoon: tussenCode });
     await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
@@ -989,7 +989,7 @@ test.describe('Gelijktijdige multi-upload', () => {
     await api('POST', '/gebruiker/voorwaarden/accepteren', { body: { email, wachtwoord: WW } });
     await api('POST', '/gebruikers/verkoop/' + gid, { adminKey: ADMIN, body: { traject_limiet: 1, modules: { traject: true, contracten: true } } });
     const c = await api('POST', '/adviseur/create', { body: { email, wachtwoord: WW, traject: { kantoor_naam: 'E2E MultiUpload Kantoor BV', traject_type: 'Verkoop' } } });
-    verkoperCode = c.json.code;
+    verkoperCode = c.json.verkoper_inlogcode || c.json.code; // N-120 batch F: werkende verkoper-inlogcode
     tussenCode = c.json.tussen_code;
     await accepteerPlatformvoorwaarden({ verkoper: verkoperCode, tussenpersoon: tussenCode });
     await api('POST', '/mna/vok/teken', { body: { code: tussenCode, naam: 'E2E Test', versie: VOK_VERSIE, email } });
