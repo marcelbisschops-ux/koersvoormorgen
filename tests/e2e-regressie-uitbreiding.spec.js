@@ -558,11 +558,11 @@ test('7. Begeleider: consolidatiekeuze bij afwijkend groepscijfer — D1-geverif
     // Twee entiteiten aanmaken (holding + werkmaatschappij) als verkoper. Bevestigd via broncode
     // (worker/07-mna-groepen.js): het veld heet `rol` ('holding'/'werkmaatschappij', niet
     // is_holding), en GET /mna/entiteiten/:code geeft een kale array terug, geen {entiteiten:[...]}.
-    const holding = await api('POST', '/mna/entiteiten/' + t.code, { body: { naam: 'Holding ' + MARKER, kvk: '11111111', rol: 'holding' } });
+    const holding = await api('POST', '/mna/entiteiten/' + t.v, { body: { naam: 'Holding ' + MARKER, kvk: '11111111', rol: 'holding' } });
     expect(holding.json && holding.json.ok, 'holding-entiteit aangemaakt').toBe(true);
-    const werkm = await api('POST', '/mna/entiteiten/' + t.code, { body: { naam: 'Werkmij ' + MARKER, kvk: '22222222', rol: 'werkmaatschappij' } });
+    const werkm = await api('POST', '/mna/entiteiten/' + t.v, { body: { naam: 'Werkmij ' + MARKER, kvk: '22222222', rol: 'werkmaatschappij' } });
     expect(werkm.json && werkm.json.ok, 'werkmaatschappij-entiteit aangemaakt').toBe(true);
-    const lijst = await api('GET', '/mna/entiteiten/' + t.code);
+    const lijst = await api('GET', '/mna/entiteiten/' + t.v);
     const werkmEntiteit = (Array.isArray(lijst.json) ? lijst.json : []).find((e) => e.rol !== 'holding');
     expect(werkmEntiteit, 'werkmaatschappij terugvindbaar').toBeTruthy();
 
@@ -622,7 +622,7 @@ test('8. Verkoper: geüpload document verwijderen — D1-geverifieerd, weg uit d
     const uploadResp = await fetch(WORKER + '/mna/document/upload-base64', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'data=' + encodeURIComponent(JSON.stringify({ code: t.code, fase_id: 'commercieel', bestand_naam: 'e2e-test-verwijderen.csv', base64 })),
+      body: 'data=' + encodeURIComponent(JSON.stringify({ code: t.v, fase_id: 'commercieel', bestand_naam: 'e2e-test-verwijderen.csv', base64 })),
     });
     const upload = { status: uploadResp.status, json: await uploadResp.json().catch(() => null) };
     expect(upload.json && upload.json.ok, 'document geüpload (upload-base64, geen AI-extractie in deze route)').toBe(true);
@@ -662,11 +662,14 @@ test('9. Koper Q&A-tegenvoorstel, begeleider accepteert; los tegenvoorstel wordt
   test.setTimeout(45000); // vrijgeven + 2x Q&A-post + login + 2 echte klikken als begeleider; 30s globaal timeout was te krap (zie test 7)
   const t = await maakTraject();
   try {
-    await api('POST', '/mna/admin/vrijgeven/' + t.code + '?force=1', { adminKey: ADMIN });
+    const vrijgave = await api('POST', '/mna/koper-categorieen/' + t.code + '?force=1', { headers: { 'x-tussen-key': t.tussenCode }, body: { categorieen: ['financieel'] } });
+    expect(vrijgave.status === 200 && vrijgave.json?.ok === true, 'eigen begeleider geeft financieel vrij').toBe(true);
+    const nda = await api('POST', '/mna/teken', { body: { code: t.koperCode, document: 'nda', naam: 'E2E Koper' } });
+    expect(nda.status === 200 && nda.json?.ok === true, 'koper tekent fictieve NDA vóór toegang').toBe(true);
 
-    const voorstelA = await api('POST', '/mna/qa/' + t.code, { body: { vraag: 'Tegenvoorstel A — ' + MARKER, fase_id: 'financieel', type: 'voorstel', bedrag: '2750000', gesteld_door: 'E2E Koper' } });
+    const voorstelA = await api('POST', '/mna/qa/' + t.koperCode, { body: { vraag: 'Tegenvoorstel A — ' + MARKER, fase_id: 'financieel', type: 'voorstel', bedrag: '2750000', gesteld_door: 'E2E Koper' } });
     expect(voorstelA.json && voorstelA.json.ok, 'tegenvoorstel A ingediend door koper').toBe(true);
-    const voorstelB = await api('POST', '/mna/qa/' + t.code, { body: { vraag: 'Tegenvoorstel B — ' + MARKER, fase_id: 'financieel', type: 'voorstel', bedrag: '2500000', gesteld_door: 'E2E Koper' } });
+    const voorstelB = await api('POST', '/mna/qa/' + t.koperCode, { body: { vraag: 'Tegenvoorstel B — ' + MARKER, fase_id: 'financieel', type: 'voorstel', bedrag: '2500000', gesteld_door: 'E2E Koper' } });
     expect(voorstelB.json && voorstelB.json.ok, 'tegenvoorstel B ingediend door koper').toBe(true);
 
     // VOK vooraf tekenen (zelfde precedent als test 7) — anders blokkeert de verplichte VOK-popup
