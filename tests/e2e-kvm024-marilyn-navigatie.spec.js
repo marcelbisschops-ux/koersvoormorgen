@@ -30,13 +30,29 @@ async function login(page) {
   await page.goto('/marilyn.html?worker=' + encodeURIComponent(WORKER));
   await page.locator('#nood summary').click();
   await page.locator('#ak').fill(ADMIN);
-  await page.locator('#login-btn').click();
+  // De gedeelde staginglimiet geldt ook voor legitieme opeenvolgende suites.
+  // Alleen een echte 429 mag één nieuwe login na de volledige serverwachttijd geven.
+  for (let poging = 0; poging < 2; poging++) {
+    const antwoord = page.waitForResponse((r) => r.url() === WORKER + '/admin/scans' && r.request().method() === 'GET');
+    await page.locator('#login-btn').click();
+    const r = await antwoord;
+    if (r.status() === 429 && poging === 0) {
+      const retry = r.headers()['retry-after'] || '';
+      expect(/^\d+$/.test(retry) && Number(retry) > 0 && Number(retry) <= 300,
+        '429 vereist geldige Retry-After van 1–300 seconden; geen eigen wachttijd of limietbypass').toBe(true);
+      console.log('KVM-024: echte 429; wacht volledige Retry-After ' + retry + ' seconden vóór één nieuwe login.');
+      await page.waitForTimeout(Number(retry) * 1000);
+      continue;
+    }
+    expect(r.status(), 'echte beheerderslogin moet HTTP 200 geven').toBe(200);
+    break;
+  }
   await expect(page.locator('#mar-nav')).toBeVisible({ timeout: 20000 });
   return geblokkeerd;
 }
 
 test('KVM-024: dashboard, groepen en elk onderdeel bereikbaar zonder schrijfacties', async ({ page }) => {
-  test.setTimeout(180000);
+  test.setTimeout(450000);
   const fouten = []; page.on('pageerror', (e) => fouten.push(String(e) + ' @ ' + String(e.stack || '').split('\n').slice(1, 3).join(' | ') + ' na ' + laatste)); let laatste = '';
   const geblokkeerd = await login(page);
   await expect(page.locator('.dash-tegel')).toHaveCount(4);
@@ -70,6 +86,7 @@ test('KVM-024: dashboard, groepen en elk onderdeel bereikbaar zonder schrijfacti
 
 test('KVM-024: tablet-weergave', async ({ page }) => {
   test.skip(!SHOTS, 'alleen voor schermafdrukken');
+  test.setTimeout(450000);
   await page.setViewportSize({ width: 820, height: 1180 });
   await login(page);
   await page.waitForTimeout(1500);
