@@ -1731,10 +1731,15 @@ function bindAll(){
   // geen nieuwe gegevens, geen andere partijen.
   (function laadMijnOvereenkomsten(){
     var plek=ge('koper-overeenkomsten'); if(!plek||!isKoper())return;
+    var overeenkomstSessie=S, overeenkomstCode=S.code;
     var titels={NDA:'Geheimhoudingsovereenkomst (NDA)',LOI:'Letter of Intent',MOU:'Memorandum of Understanding',BEM:'Bemiddelingsovereenkomst',EXCL:'Exclusiviteitsovereenkomst'};
     var slots={NDA:'composer-nda-slot',LOI:'composer-loi-slot',MOU:'composer-mou-slot',BEM:'composer-bem-slot',EXCL:'composer-excl-slot'};
     var statusTekst={verstuurd:'Wacht op uw reactie',goedgekeurd:'Akkoord',wijziging_gevraagd:'Wijziging gevraagd'};
     function render(rijen, fout){
+      // Een andere asynchrone paneellader kan het dashboard intussen opnieuw tekenen.
+      // Schrijf in het huidige blok van dezelfde sessie; nooit in een losgeraakt oud element.
+      if(S!==overeenkomstSessie||S.code!==overeenkomstCode||!isKoper())return;
+      plek=ge('koper-overeenkomsten');if(!plek)return;
       var h='<div class="mo-kop">Mijn overeenkomsten</div>';
       if(fout) h+='<div class="mo-leeg">Het overzicht kon nu niet worden geladen. Ververs de pagina om het opnieuw te proberen.</div>';
       if(fout&&!rijen.length){ plek.innerHTML=h; return; }
